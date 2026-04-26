@@ -38,8 +38,8 @@ Out of scope for the first version:
 ## Workflow
 
 1. Check whether Docker is installed and running. If not, provide instructions to install and start Docker before proceeding.
-2. Ask the user only for missing choices needed to proceed.
-3. Prefer the default supported setup when the user does not specify details.
+2. Before creating or starting a lab, ask the user to confirm the intended setup. State the default choice inside each question so the user can accept it quickly or choose another option.
+3. Proceed without asking only when the user has explicitly requested a non-interactive run, explicitly says to proceed with the defaults without questions, or has already answered the setup questions in the current conversation.
 4. If the user asks for Confluent Platform components such as Schema Registry or Kafka Connect, prefer `--stack confluent` unless they explicitly ask to keep Apache Kafka brokers.
 5. Use `scripts/create-lab.sh` to materialize the lab files into the chosen lab directory. Unless specified, use the current directory as the lab directory.
 6. In the lab directory, run `./scripts/preflight.sh` before starting Docker Compose. This checks Docker, Docker Compose, resources, and required host ports.
@@ -52,7 +52,7 @@ Use bundled scripts as the primary interface. Do not read full script bodies bef
 
 ## Defaults
 
-Use these defaults unless the user asks otherwise:
+Offer these defaults in the setup questions:
 
 - Stack: Apache Kafka
 - Brokers: 3
@@ -71,13 +71,22 @@ Resource note: the default 3-broker lab is more realistic than a single broker, 
 
 ## User Questions
 
-Ask at most three short questions before creating the lab.
+Ask at most three short questions before creating the lab. Keep them simple and make the default easy to accept.
 
 Ask about:
-- Apache Kafka vs Confluent Platform
-- Extras such as Schema Registry, Kafka Connect, or AKHQ UI
+- Lab directory, with default `./kafka-local-lab`
+- Stack, with default Apache Kafka
+- Extras, with default none
 
-If the user says "quick", "simple", "default", or gives no preference, use the defaults without asking.
+Question template:
+
+```text
+I can create the default lab in ./kafka-local-lab: Apache Kafka, 3 brokers, plaintext, ephemeral storage, and no extras. Do you want that default, or would you like Confluent Platform and/or extras such as Schema Registry, Kafka Connect, or AKHQ?
+```
+
+If the user says "quick", "simple", or "default", still ask one confirmation question that states the default. Do not create or start the lab until the user confirms, unless they explicitly asked for a non-interactive run.
+
+For automated evaluations, CI, scripted runs, or prompts that explicitly say "do not ask questions", proceed with the requested/default choices.
 
 ## Validation
 

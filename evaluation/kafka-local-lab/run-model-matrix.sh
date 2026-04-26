@@ -176,40 +176,40 @@ make_prompt() {
 
   case "$RUNNER:$scenario" in
     claude:default)
-      prompt="/kafka-local-lab create a quick local Kafka lab in $target_dir. Use the defaults."
+      prompt="/kafka-local-lab create a quick local Kafka lab in $target_dir. This is a non-interactive regression run: use the defaults and do not ask setup questions."
       ;;
     codex:default)
-      prompt="Use kafka-local-lab to create a quick local Kafka lab in $target_dir. Use the defaults."
+      prompt="Use kafka-local-lab to create a quick local Kafka lab in $target_dir. This is a non-interactive regression run: use the defaults and do not ask setup questions."
       ;;
     claude:confluent)
-      prompt="/kafka-local-lab create a Confluent Kafka lab in $target_dir. Use no extras."
+      prompt="/kafka-local-lab create a Confluent Kafka lab in $target_dir. Use no extras. This is a non-interactive regression run: do not ask setup questions."
       ;;
     codex:confluent)
-      prompt="Use kafka-local-lab to create a Confluent Kafka lab in $target_dir. Use no extras."
+      prompt="Use kafka-local-lab to create a Confluent Kafka lab in $target_dir. Use no extras. This is a non-interactive regression run: do not ask setup questions."
       ;;
     claude:schema-registry)
-      prompt="/kafka-local-lab create a Confluent Kafka lab with Schema Registry in $target_dir. Run the full validation."
+      prompt="/kafka-local-lab create a Confluent Kafka lab with Schema Registry in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     codex:schema-registry)
-      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Schema Registry in $target_dir. Run the full validation."
+      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Schema Registry in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     claude:connect)
-      prompt="/kafka-local-lab create a Confluent Kafka lab with Kafka Connect in $target_dir. Run the full validation."
+      prompt="/kafka-local-lab create a Confluent Kafka lab with Kafka Connect in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     codex:connect)
-      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Kafka Connect in $target_dir. Run the full validation."
+      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Kafka Connect in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     claude:akhq)
-      prompt="/kafka-local-lab create a Confluent Kafka lab with AKHQ UI in $target_dir. Run the full validation."
+      prompt="/kafka-local-lab create a Confluent Kafka lab with AKHQ UI in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     codex:akhq)
-      prompt="Use kafka-local-lab to create a Confluent Kafka lab with AKHQ UI in $target_dir. Run the full validation."
+      prompt="Use kafka-local-lab to create a Confluent Kafka lab with AKHQ UI in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     claude:full)
-      prompt="/kafka-local-lab create a Confluent Kafka lab with Schema Registry, Kafka Connect, and AKHQ UI in $target_dir. Run the full validation."
+      prompt="/kafka-local-lab create a Confluent Kafka lab with Schema Registry, Kafka Connect, and AKHQ UI in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     codex:full)
-      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Schema Registry, Kafka Connect, and AKHQ UI in $target_dir. Run the full validation."
+      prompt="Use kafka-local-lab to create a Confluent Kafka lab with Schema Registry, Kafka Connect, and AKHQ UI in $target_dir. Run the full validation. This is a non-interactive regression run: do not ask setup questions."
       ;;
     *:custom)
       echo "Scenario 'custom' requires PROMPT_TEXT with {{TARGET_DIR}}." >&2

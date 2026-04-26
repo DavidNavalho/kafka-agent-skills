@@ -45,12 +45,12 @@ sbx exec agent-skills-eval -- sh -lc \
 Prompt:
 
 ```text
-Use kafka-local-lab to create a quick local Kafka lab in /tmp/kafka-lab-test. Use the defaults.
+Use kafka-local-lab to create a quick local Kafka lab in /tmp/kafka-lab-test. This is a non-interactive regression run: use the defaults and do not ask setup questions.
 ```
 
 Success criteria:
 
-- [x] The agent avoids unnecessary questions.
+- [x] The agent proceeds without questions only because the prompt explicitly marks the run as non-interactive.
 - [x] The agent uses `scripts/create-lab.sh`.
 - [x] The agent checks Docker availability and required ports.
 - [x] The agent starts Docker Compose.
@@ -130,7 +130,7 @@ Claude defaults:
 The default prompt can be overridden with `PROMPT_TEXT`. Use `{{TARGET_DIR}}` where the harness should insert the generated lab directory:
 
 ```bash
-PROMPT_TEXT='Use kafka-local-lab to create a default lab in {{TARGET_DIR}} and report the connection details.' \
+PROMPT_TEXT='Use kafka-local-lab to create a default lab in {{TARGET_DIR}} and report the connection details. This is a non-interactive regression run: do not ask setup questions.' \
   evaluation/kafka-local-lab/run-model-matrix.sh \
   --scenarios custom \
   --models "gpt-5.4-mini" \

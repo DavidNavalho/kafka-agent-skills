@@ -175,7 +175,10 @@ check_compose_exec() {
 main() {
   check_docker
   check_resources
-  check_ports
+
+  if [ "$CHECK_EXEC" -eq 0 ] || [ "$PORTS_EXPLICIT" -eq 1 ]; then
+    check_ports
+  fi
 
   if [ "$CHECK_EXEC" -eq 1 ]; then
     check_compose_exec

@@ -526,3 +526,39 @@ Notes:
 
 - This confirms the extracted repo layout and repo-local `SKILL_SOURCE` work.
 - Generated `evaluation-runs/` artifacts remain ignored and were not added to the publishable file set.
+
+## Run 10: Manual UI Feedback Fixes
+
+Date: 2026-04-27
+
+Scope:
+
+- Updated `SKILL.md` so normal interactive use asks for confirmation before creating or starting a lab, while automated harness prompts explicitly opt into non-interactive execution.
+- Fixed `preflight.sh --check-exec` so post-start validation does not re-check host ports that the running Kafka containers have already bound.
+
+Validation:
+
+```bash
+bash -n skills/kafka-local-lab/scripts/create-lab.sh
+bash -n skills/kafka-local-lab/scripts/preflight.sh
+bash -n skills/kafka-local-lab/scripts/smoke-test.sh
+bash -n evaluation/kafka-local-lab/run-model-matrix.sh
+```
+
+Post-start preflight was also validated against the running manual UI-test lab:
+
+```bash
+./skills/kafka-local-lab/scripts/preflight.sh \
+  --check-exec \
+  --project-dir /Users/jinx/gits/jinx/tests-and-stuff/kafka-local-lab \
+  --compose-file /Users/jinx/gits/jinx/tests-and-stuff/kafka-local-lab/docker-compose.yml
+```
+
+Result:
+
+```text
+[preflight] Checking docker compose exec against kafka-1
+[preflight] Preflight checks passed
+```
+
+Full fresh-lab validation was not rerun in this pass because the manual UI-test lab was still occupying the default host ports.
