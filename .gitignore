@@ -1,0 +1,10 @@
+.DS_Store
+
+# Generated evaluation output. Keep summaries in docs when they are useful,
+# but do not commit raw transcripts, traces, or generated lab artifacts.
+evaluation/**/evaluation-runs/
+
+# Local scratch output from skill-generated labs.
+tmp/
+*.log
+
