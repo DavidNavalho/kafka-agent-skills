@@ -562,3 +562,67 @@ Result:
 ```
 
 Full fresh-lab validation was not rerun in this pass because the manual UI-test lab was still occupying the default host ports.
+
+## Run 11: Public Release Baseline
+
+Date: 2026-04-27
+
+Sandbox: `agent-skills-eval`
+
+Scope:
+
+- Added runner preflight checks to fail fast when Codex or Claude is missing or unauthenticated inside the sandbox.
+- Ran the full built-in scenario set for Codex and Claude without using Spark.
+- Added the MIT license before making the repository public.
+
+Commands:
+
+```bash
+evaluation/kafka-local-lab/run-model-matrix.sh \
+  --runner codex \
+  --scenarios "default confluent schema-registry connect akhq full" \
+  --models "gpt-5.4-mini" \
+  --efforts "low"
+```
+
+```bash
+evaluation/kafka-local-lab/run-model-matrix.sh \
+  --runner claude \
+  --scenarios "default confluent schema-registry connect akhq full" \
+  --models "haiku" \
+  --efforts "low"
+```
+
+Codex results:
+
+```text
+run set          scenario         model           effort  result  seconds
+20260427-003000  default          gpt-5.4-mini    low     pass    36
+20260427-003000  confluent        gpt-5.4-mini    low     pass    41
+20260427-003000  schema-registry  gpt-5.4-mini    low     pass    62
+20260427-003000  connect          gpt-5.4-mini    low     pass    86
+20260427-003000  akhq             gpt-5.4-mini    low     pass    53
+20260427-003000  full             gpt-5.4-mini    low     pass    96
+```
+
+Claude results:
+
+```text
+run set          scenario         model  effort  result  seconds  cost_usd
+20260427-011514  default          haiku  low     pass    40       0.043192
+20260427-011514  confluent        haiku  low     pass    49       0.050588
+20260427-011514  schema-registry  haiku  low     pass    41       0.044060
+20260427-011514  connect          haiku  low     pass    69       0.046140
+20260427-011514  akhq             haiku  low     pass    42       0.045129
+20260427-011514  full             haiku  low     pass    74       0.055304
+```
+
+Totals:
+
+```text
+runner  cells  total_seconds  total_tokens  total_cost_usd
+codex   6      374            100981        unknown
+claude  6      315            1515809       0.284413
+```
+
+All release baseline cells matched expected generated config and passed the required smoke checks.

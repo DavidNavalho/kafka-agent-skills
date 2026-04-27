@@ -163,6 +163,41 @@ refresh_skill() {
   ' >/dev/null
 }
 
+check_runner_ready() {
+  log "Checking $RUNNER runner in sandbox"
+
+  case "$RUNNER" in
+    codex)
+      sbx exec "$SBX_NAME" -- sh -lc '
+        command -v codex >/dev/null 2>&1 || {
+          echo "codex is not installed in the sandbox" >&2
+          exit 1
+        }
+        codex login status >/dev/null 2>&1 || {
+          echo "codex is installed but not authenticated in the sandbox" >&2
+          exit 1
+        }
+      ' >/dev/null
+      ;;
+    claude)
+      sbx exec "$SBX_NAME" -- sh -lc '
+        command -v claude >/dev/null 2>&1 || {
+          echo "claude is not installed in the sandbox" >&2
+          exit 1
+        }
+        command -v node >/dev/null 2>&1 || {
+          echo "node is required for Claude stream-json parsing" >&2
+          exit 1
+        }
+        claude auth status < /dev/null >/dev/null 2>&1 || {
+          echo "claude is installed but not authenticated in the sandbox" >&2
+          exit 1
+        }
+      ' >/dev/null
+      ;;
+  esac
+}
+
 make_prompt() {
   local scenario="$1"
   local target_dir="$2"
@@ -610,6 +645,7 @@ log "Models: $MODELS"
 log "Efforts: $EFFORTS"
 log "Sandbox run root: $SANDBOX_RUN_ROOT"
 refresh_skill
+check_runner_ready
 
 for scenario in $SCENARIOS; do
   for model in $MODELS; do

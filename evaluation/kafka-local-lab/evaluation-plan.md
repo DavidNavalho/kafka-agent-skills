@@ -121,6 +121,8 @@ Claude comparison uses the same harness with Claude-only defaults:
 evaluation/kafka-local-lab/run-model-matrix.sh --runner claude
 ```
 
+The Claude runner requires `claude`, `node`, and an authenticated `claude auth status` inside the `sbx` sandbox. The harness checks these prerequisites before starting scenario runs.
+
 Claude defaults:
 
 - Models: `haiku sonnet`

@@ -65,8 +65,11 @@ evaluation/kafka-local-lab/run-model-matrix.sh \
 
 The generated `evaluation-runs/` directories are intentionally ignored.
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
 ## Publishing Checklist
 
-- Choose and add a license.
 - Decide whether to publish evaluation summaries only, or also selected redacted transcripts.
 - Run `evaluation/kafka-local-lab/run-model-matrix.sh` for the release baseline.
