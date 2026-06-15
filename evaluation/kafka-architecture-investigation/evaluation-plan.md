@@ -41,6 +41,15 @@ Initial sbx observation:
 - Practical next step: add a repo-local static validator or run the official validator from a mounted/copied path inside a temporary sbx venv.
 - `codex login status` can return success even when a subsequent `codex exec` fails with API 401. Treat the first model call as an auth validation unless a cheap explicit API probe is added.
 
+Codex auth gate:
+
+- For this evaluation, use ChatGPT-managed Codex auth inside sbx, not API-key auth.
+- Preferred human-driven sandbox setup is `codex login --device-auth` from inside the sbx shell.
+- Do not set `OPENAI_API_KEY`, `CODEX_API_KEY`, or use `codex login --with-api-key` for subscription-based evals.
+- Keep auth state under the sandbox user's `CODEX_HOME`/`~/.codex`.
+- Run a cheap `codex exec --ephemeral` smoke call before expensive scenarios. `codex login status` is useful but insufficient because it can pass with stale or unusable credentials.
+- See `evaluation/sbx-sandbox-pattern/sbx-skill-notes.md` for the future generic sbx skill pattern and official Codex doc links.
+
 First smoke runner attempt:
 
 - Command: `evaluation/kafka-architecture-investigation/run-sbx-smoke.sh`

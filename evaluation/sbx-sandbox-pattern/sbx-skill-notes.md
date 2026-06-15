@@ -47,6 +47,34 @@ sbx run agent-skills-eval
 - Capture prompts, final responses, traces, generated files, and summaries under an ignored `evaluation-runs/` directory.
 - Clean up generated containers and files after each run unless preserving evidence.
 
+## Codex Subscription Auth Pattern
+
+Use ChatGPT-managed Codex authentication inside sbx when the evaluation should consume the user's ChatGPT/Codex subscription or workspace entitlement rather than API usage.
+
+Official Codex docs distinguish these modes:
+
+- ChatGPT sign-in: subscription/workspace access, with ChatGPT workspace permissions and policies.
+- API key sign-in: usage-based Platform billing, with API org policies.
+- The CLI defaults to ChatGPT sign-in when no valid session exists.
+- For headless or remote shells, use device-code login: `codex login --device-auth`.
+- For trusted Business/Enterprise automation, Codex access tokens can provide ChatGPT-managed local Codex access without browser login.
+
+Recommended sbx workflow:
+
+1. Keep Codex state inside the sandbox user's `CODEX_HOME`/`~/.codex`; do not mount the host `~/.codex` wholesale into an untrusted sandbox.
+2. Open a shell in the sandbox and run `codex login --device-auth`, then complete the browser/device-code flow outside the sandbox.
+3. Avoid `codex login --with-api-key`, `OPENAI_API_KEY`, and `CODEX_API_KEY` when the objective is subscription-based auth.
+4. If copying `auth.json` into a container is necessary, treat it as a secret, copy only the auth file, and ensure it is not captured in eval artifacts, logs, commits, or prompts.
+5. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
+6. Verify with `codex login status`, then run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
+
+Useful official references:
+
+- `https://developers.openai.com/codex/auth`
+- `https://developers.openai.com/codex/noninteractive`
+- `https://developers.openai.com/codex/enterprise/access-tokens`
+- `https://developers.openai.com/codex/environment-variables`
+
 ## Common Failure Modes
 
 - Agent cannot see the repo path because the host path was not mounted into sbx.
