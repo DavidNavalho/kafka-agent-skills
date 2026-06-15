@@ -42,7 +42,7 @@ sbx run agent-skills-eval
 ## Skill Evaluation Pattern
 
 - Mount the skill repo read-only.
-- Copy the skill into the sandbox agent skill directory before each run.
+- Clear the sandbox user skill directory before each run, then copy only the skill or skills under test into the sandbox agent skill directory.
 - Run one model/scenario at a time unless ports and resource names are isolated.
 - Capture prompts, final responses, traces, generated files, and summaries under an ignored `evaluation-runs/` directory.
 - Clean up generated containers and files after each run unless preserving evidence.
@@ -52,6 +52,7 @@ sbx run agent-skills-eval
 - Agent cannot see the repo path because the host path was not mounted into sbx.
 - System-local agent files such as `~/.codex/skills/.system/...` are not visible unless explicitly mounted.
 - Agent is not authenticated inside the sandbox.
+- Agent auth status may be stale: `codex login status` can pass while the first `codex exec` call fails with API 401.
 - Python packages available on the host, such as `PyYAML`, may be missing inside the sandbox.
 - Docker or Docker Compose behavior differs across `sbx exec` calls.
 - Model runs leave containers or generated files behind.

@@ -39,8 +39,28 @@ Initial sbx observation:
 - `/Users/jinx/.codex/skills/.system/skill-creator/scripts/quick_validate.py` was not visible inside sbx by default.
 - `PyYAML` was not installed inside the sbx Python environment by default.
 - Practical next step: add a repo-local static validator or run the official validator from a mounted/copied path inside a temporary sbx venv.
+- `codex login status` can return success even when a subsequent `codex exec` fails with API 401. Treat the first model call as an auth validation unless a cheap explicit API probe is added.
+
+First smoke runner attempt:
+
+- Command: `evaluation/kafka-architecture-investigation/run-sbx-smoke.sh`
+- Model/effort: `gpt-5.3-codex-spark` / `low`
+- Result: blocked before skill execution by sbx Codex auth.
+- Evidence: `evaluation/kafka-architecture-investigation/evaluation-runs/20260615-144704/summary.md`
+- Error: API 401 with the sandbox-provided `proxy-ma*aged` key, despite `codex login status` passing.
+- Harness finding: runner now installs only the skill under test inside sbx and records an explicit `auth_failed` score column.
 
 ## Phase 1: Trigger And Tracker-First Smoke
+
+Runner:
+
+```bash
+evaluation/kafka-architecture-investigation/run-sbx-smoke.sh \
+  --model gpt-5.3-codex-spark \
+  --effort low
+```
+
+The runner installs only `kafka-architecture-investigation` inside sbx before running Codex.
 
 Prompt:
 
