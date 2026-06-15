@@ -18,8 +18,9 @@ This skill is not a general "make me a Kafka lab" workflow. If the available ski
 - Use the opinionated file layout below. Do not invent alternate names or scatter investigation state across the repo unless the user explicitly requests it.
 - After reading this `SKILL.md`, bootstrap or read `TRACKER.md` before reading any project investigation file or skill reference.
 - Resume from the earliest non-`done` row in the tracker checklist. Read only the files and references named by that row.
-- Start with an interactive synchronization loop. Do not begin research until the minimum research-ready gate is met.
-- After intake is research-ready, drive the work yourself: research, ADR, scenario/spec, harness, execution, and report. Stop only for missing user facts, destructive actions, unclear policy tradeoffs, or external blockers.
+- Start with an interactive synchronization loop. Ask at least one question when the research-ready gate is blocked, and ask no more than five focused questions in one turn.
+- After intake and source research are sufficient, drive the work yourself: ADR, scenario/spec, harness, execution, and report. Stop only for missing user facts, destructive actions, unclear policy tradeoffs, or external blockers.
+- After the ADR completion gate is met, run an autonomous implementation loop: pick the next pending step in `IMPLEMENTATION_SPEC.md`, execute it, validate it, update evidence and status, then continue until all steps are done or a stop condition is reached.
 - Treat docs as useful but incomplete. Use official docs for intended behavior, source code for implementation behavior, local tests for version-specific behavior, and harness artifacts as final evidence.
 - Do not treat "Kafka started" as proof. Validate control plane, data plane, transaction visibility, consumer offsets, and client behavior as relevant.
 - Prefer deterministic state construction over timing-based process kills. If a crash timing test is unavoidable, mark it as nondeterministic and do not use it as the only proof.
@@ -80,7 +81,7 @@ The workflow checklist in `TRACKER.md` is authoritative. Keep this summary align
 - `S03-adr`: build the ADR that justifies the testable approach.
 - `S04-scenarios-spec`: expand ADR claims into deterministic scenarios and small implementation steps.
 - `S05-harness`: build or extend the local harness and artifact contract.
-- `S06-execute`: execute implementation steps and iterate on evidence.
+- `S06-execute`: run the autonomous implementation loop and iterate on evidence.
 - `S07-report-runbook`: produce the final report and runbook.
 
 ## Reference Purpose Summary

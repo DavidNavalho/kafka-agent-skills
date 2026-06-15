@@ -22,10 +22,11 @@
 
 ## Autonomous Execution Rules
 
-- Execute steps in order.
-- Update status after each validation gate.
+- Start with the first step whose status is not `done`.
+- Execute exactly one pending step, run its validation gate, update status and evidence, then continue to the next pending step.
 - Revise source research, ADR, scenario matrix, or harness spec when evidence changes the plan.
 - Stop for user input only when a policy choice, missing environment fact, credential/license issue, or destructive action blocks progress.
+- Continue until every step is `done` or a stop condition is recorded in `TRACKER.md`.
 
 ## Open Implementation Questions
 

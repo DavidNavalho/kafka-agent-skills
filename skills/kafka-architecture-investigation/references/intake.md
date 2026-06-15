@@ -4,6 +4,8 @@ Use this reference to build `INVESTIGATION_BRIEF.md` and a concise `REFERENCE_AR
 
 Ask in small batches. The initial phase is an active synchronization loop with the user: ask, update the brief and architecture, evaluate the research-ready gate, then ask again only for blockers or high-value missing facts.
 
+Question count rule: ask at least one question when a required research-ready fact is missing, and ask no more than five focused questions in one turn. Prefer three or fewer for normal turns; use four or five only when the missing facts are tightly related.
+
 ## Minimum Brief
 
 Capture:
@@ -18,7 +20,7 @@ Capture:
 
 ## Initial Question Batches
 
-Ask no more than three questions per turn. Start with Batch 1 unless the user already answered it.
+Start with Batch 1 unless the user already answered it. Ask the remaining batches only when their facts are still needed for the research-ready gate.
 
 ### Batch 1: Orientation
 
