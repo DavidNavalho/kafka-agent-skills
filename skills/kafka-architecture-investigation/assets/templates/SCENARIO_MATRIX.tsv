@@ -1,0 +1,2 @@
+scenario_id	track	objective_ids	adr_claim_ids	purpose	setup	fault_or_mutation	expected_result	assertions	artifacts	implementation_step_ids	status	notes
+S001	baseline	O1	C1	Prove the healthy lab and fixture are valid		TBD	TBD	TBD	TBD		planned	

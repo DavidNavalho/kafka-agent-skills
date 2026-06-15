@@ -1,0 +1,94 @@
+---
+name: kafka-architecture-investigation
+description: Guide Kafka architecture investigations from real-world estate and target-state intake through documentation/source research, ADR creation, deterministic scenario design, implementation specs, local harnesses, runbooks, and reports. Use when researching, testing, or proving Kafka architecture changes such as disaster recovery, snapshot restore, KRaft metadata recovery, cluster linking migration, transactional cutover, consumer offset recovery, backup-tooling claims, reduced-broker recovery, or any Kafka design where documentation alone is insufficient and a local proof is needed.
+---
+
+# Kafka Architecture Investigation
+
+## Purpose
+
+Turn a Kafka architecture question into a source-backed, deterministic, locally testable investigation with a small tracker, reference architecture, ADR, scenario matrix, implementation spec, harness evidence, runbook, and report.
+
+This skill is not a general "make me a Kafka lab" workflow. If the available skills include `kafka-local-lab`, use it as a companion for simple local lab materialization. If it is unavailable, continue with project-local lab design unless installing the companion skill would materially save time.
+
+## Operating Rules
+
+- Keep chat updates short: state the current phase and link to the working document.
+- Keep the tracker small. Put detailed reasoning in the fixed investigation files.
+- Use the opinionated file layout below. Do not invent alternate names or scatter investigation state across the repo unless the user explicitly requests it.
+- After reading this `SKILL.md`, bootstrap or read `TRACKER.md` before reading any project investigation file or skill reference.
+- Resume from the earliest non-`done` row in the tracker checklist. Read only the files and references named by that row.
+- Start with an interactive synchronization loop. Do not begin research until the minimum research-ready gate is met.
+- After intake is research-ready, drive the work yourself: research, ADR, scenario/spec, harness, execution, and report. Stop only for missing user facts, destructive actions, unclear policy tradeoffs, or external blockers.
+- Treat docs as useful but incomplete. Use official docs for intended behavior, source code for implementation behavior, local tests for version-specific behavior, and harness artifacts as final evidence.
+- Do not treat "Kafka started" as proof. Validate control plane, data plane, transaction visibility, consumer offsets, and client behavior as relevant.
+- Prefer deterministic state construction over timing-based process kills. If a crash timing test is unavoidable, mark it as nondeterministic and do not use it as the only proof.
+- Never mutate original snapshots, production exports, or source evidence. Work on disposable copies.
+
+## Fixed Project Files
+
+Use these exact investigation paths:
+
+```text
+docs/kafka-architecture-investigation/
+  TRACKER.md
+  INVESTIGATION_BRIEF.md
+  REFERENCE_ARCHITECTURE.md
+  SOURCE_RESEARCH.md
+  ADR.md
+  SCENARIO_MATRIX.tsv
+  IMPLEMENTATION_SPEC.md
+  HARNESS_SPEC.md
+  REPORT.md
+  RUNBOOK.md
+scripts/kafka-architecture-investigation/
+  reset.sh
+  seed.sh
+  capture.sh
+  mutate.sh
+  start.sh
+  assert.sh
+  report.sh
+artifacts/kafka-architecture-investigation/
+  runs/
+  snapshots/
+```
+
+Create `TRACKER.md` first. Create the other files lazily from `assets/templates/` when the active tracker step needs them. Keep all durable investigation state in `docs/kafka-architecture-investigation/`, harness entrypoint scripts in `scripts/kafka-architecture-investigation/`, and raw harness output under `artifacts/kafka-architecture-investigation/`.
+
+## Context Management
+
+Use `TRACKER.md` as the only always-read investigation file.
+
+1. After this skill loads, check for `docs/kafka-architecture-investigation/TRACKER.md`.
+2. If it is missing, create the fixed directory, copy `assets/templates/TRACKER.md`, and create other template files only as the active tracker step needs them.
+3. Read `TRACKER.md`.
+4. Find the earliest checklist row whose status is not `done`.
+5. If a listed investigation file is missing, create it from the matching template before reading it.
+6. Read only the files and skill references listed in that row's `Read Now` column.
+7. Do the work for that step, update the durable files named in `Write/Update`, then update `TRACKER.md` before moving on.
+
+Do not read all references, templates, or investigation documents "to get context". The tracker is the context index.
+
+## Workflow
+
+The workflow checklist in `TRACKER.md` is authoritative. Keep this summary aligned with those rows:
+
+- `S00-bootstrap`: create the fixed investigation directory and tracker if missing.
+- `S01-user-sync`: ask focused user questions until the research-ready gate is satisfied.
+- `S02-source-research`: research docs and source code for the selected Kafka tracks.
+- `S03-adr`: build the ADR that justifies the testable approach.
+- `S04-scenarios-spec`: expand ADR claims into deterministic scenarios and small implementation steps.
+- `S05-harness`: build or extend the local harness and artifact contract.
+- `S06-execute`: execute implementation steps and iterate on evidence.
+- `S07-report-runbook`: produce the final report and runbook.
+
+## Reference Purpose Summary
+
+Read these files only when the active tracker row lists them in `Read Now`.
+
+- `references/intake.md`: initial questions, synchronization loop, and research-ready gate.
+- `references/kafka-internals-checklist.md`: source/docs research and subsystem-specific failure analysis.
+- `references/scenario-design.md`: ADR/source claims into deterministic scenarios.
+- `references/harness-contract.md`: scripts, artifact directories, assertions, and rerunnable commands.
+- `references/reporting.md`: ADR, runbook, final report, and user-facing summary.

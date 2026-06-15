@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kafka Architecture Investigation"
+  short_description: "Kafka architecture research and proofs."
+  default_prompt: "Use $kafka-architecture-investigation to investigate this Kafka architecture question from estate description through source-backed ADR, deterministic scenarios, implementation spec, harness, and decision artifacts."

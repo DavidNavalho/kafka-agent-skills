@@ -11,6 +11,11 @@ skills/
     assets/
     references/
     scripts/
+  kafka-architecture-investigation/
+    SKILL.md
+    agents/
+    assets/
+    references/
 evaluation/
   kafka-local-lab/
     run-model-matrix.sh
@@ -23,6 +28,7 @@ Runtime skill folders stay self-contained under `skills/<skill-name>`. Evaluatio
 ## Current Skills
 
 - `kafka-local-lab`: create and smoke-test local Docker-based Kafka labs, including Apache Kafka, Confluent Kafka, Schema Registry, Kafka Connect, and AKHQ.
+- `kafka-architecture-investigation`: guide source-backed Kafka architecture investigations, ADRs, deterministic scenario design, harness evidence, runbooks, and reports.
 
 ## Install Locally
 
@@ -31,6 +37,7 @@ For Codex:
 ```bash
 mkdir -p "$HOME/.codex/skills"
 cp -R skills/kafka-local-lab "$HOME/.codex/skills/"
+cp -R skills/kafka-architecture-investigation "$HOME/.codex/skills/"
 ```
 
 For Claude Code:
@@ -38,6 +45,7 @@ For Claude Code:
 ```bash
 mkdir -p "$HOME/.claude/skills"
 cp -R skills/kafka-local-lab "$HOME/.claude/skills/"
+cp -R skills/kafka-architecture-investigation "$HOME/.claude/skills/"
 ```
 
 ## Evaluate
