@@ -68,7 +68,7 @@ Recommended sbx workflow:
 5. If copying host subscription auth into sbx is necessary, treat `auth.json` as a secret, copy only that file, and ensure it is not captured in eval artifacts, logs, commits, or prompts:
 
    ```bash
-   sbx exec agent-skills-eval -- sh -lc 'mkdir -p "$HOME/.codex"; umask 077; cat > "$HOME/.codex/auth.json"' < "$HOME/.codex/auth.json"
+   sbx exec -i agent-skills-eval sh -lc 'mkdir -p "$HOME/.codex"; umask 077; cat > "$HOME/.codex/auth.json"' < "$HOME/.codex/auth.json"
    ```
 
    Prefer this narrow copy over mounting the whole host `~/.codex` directory.
