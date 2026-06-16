@@ -68,8 +68,10 @@ case "$host_status" in
     ;;
 esac
 
-log "Clearing sandbox Codex login state in $SBX_NAME"
-sbx exec "$SBX_NAME" codex logout >/dev/null 2>&1 || true
+log "Clearing sandbox Codex auth cache in $SBX_NAME"
+sbx exec "$SBX_NAME" sh -lc '
+  rm -f "$HOME/.codex/auth.json" "$HOME/.codex/auth.json.tmp"
+' >/dev/null
 
 log "Copying host ChatGPT auth cache into $SBX_NAME"
 sbx exec -i "$SBX_NAME" sh -lc '

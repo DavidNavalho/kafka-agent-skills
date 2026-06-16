@@ -62,6 +62,14 @@ First smoke runner attempt:
 - Error: API 401 with the sandbox-provided `proxy-ma*aged` key, despite `codex login status` passing.
 - Harness finding: runner now installs only the skill under test inside sbx and records an explicit `auth_failed` score column.
 
+First auth-sync smoke attempt:
+
+- Command: `evaluation/kafka-architecture-investigation/run-sbx-smoke.sh --sync-host-codex-auth --model gpt-5.3-codex-spark --effort low`
+- Result: blocked before skill execution by ChatGPT OAuth token revocation.
+- Evidence: `evaluation/kafka-architecture-investigation/evaluation-runs/20260616-110824/summary.md`
+- Error: `refresh_token_invalidated` / `token_revoked` after the helper ran `codex logout` inside sbx before copying host auth.
+- Harness finding: never run `codex logout` in sbx after host auth has been copied there; delete the sandbox auth cache file locally instead.
+
 ## Phase 1: Trigger And Tracker-First Smoke
 
 Runner:

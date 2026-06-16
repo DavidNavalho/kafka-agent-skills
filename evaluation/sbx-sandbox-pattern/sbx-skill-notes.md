@@ -72,6 +72,7 @@ Recommended sbx workflow:
    ```
 
    Prefer this narrow copy over mounting the whole host `~/.codex` directory. If reimplementing the command, remember that `sbx exec` needs `-i` for stdin forwarding.
+   Do not run `codex logout` in a sandbox that may contain copied host ChatGPT credentials; logout can revoke the shared refresh token. Delete the sandbox auth cache file locally instead.
 6. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
 7. Verify with `codex login status`; it must not report API-key login for subscription-based evals.
 8. Run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly and satisfy Codex's git-repo guard for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
@@ -90,6 +91,7 @@ Useful official references:
 - Agent is not authenticated inside the sandbox.
 - Agent is authenticated with an API key inside the sandbox when the eval requires ChatGPT/subscription auth.
 - Agent auth status may be stale: `codex login status` can pass while the first `codex exec` call fails with API 401.
+- Running `codex logout` in a sandbox after copying host ChatGPT auth can revoke the host refresh token.
 - Python packages available on the host, such as `PyYAML`, may be missing inside the sandbox.
 - Docker or Docker Compose behavior differs across `sbx exec` calls.
 - Model runs leave containers or generated files behind.
