@@ -12,6 +12,8 @@ Options:
   --model NAME         Codex model. Defaults to gpt-5.3-codex-spark.
   --effort NAME        Reasoning effort. Defaults to low.
   --results-dir DIR    Host results directory.
+  --sync-host-codex-auth
+                      Copy host ChatGPT Codex auth into sbx before running.
   -h, --help           Show this help.
 
 Environment:
@@ -21,6 +23,7 @@ Environment:
   SANDBOX_WORKSPACE    /home/agent/workspace
   SKILL_SOURCE         Repo-local skills/kafka-architecture-investigation
   SKILL_DEST           /home/agent/.codex/skills/kafka-architecture-investigation
+  SYNC_HOST_CODEX_AUTH 1 to copy host ChatGPT Codex auth into sbx first.
   PROMPT_TEXT          Optional prompt. Use {{TARGET_DIR}} for insertion.
 USAGE
 }
@@ -34,6 +37,7 @@ EFFORT="${EFFORT:-low}"
 SANDBOX_WORKSPACE="${SANDBOX_WORKSPACE:-/home/agent/workspace}"
 SKILL_SOURCE="${SKILL_SOURCE:-$REPO_ROOT/skills/kafka-architecture-investigation}"
 SKILL_DEST="${SKILL_DEST:-/home/agent/.codex/skills/kafka-architecture-investigation}"
+SYNC_HOST_CODEX_AUTH="${SYNC_HOST_CODEX_AUTH:-0}"
 RUN_SET="${RUN_SET:-$(date +%Y%m%d-%H%M%S)}"
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/evaluation-runs/$RUN_SET}"
 PROMPT_TEXT="${PROMPT_TEXT:-}"
@@ -55,6 +59,10 @@ while [ "$#" -gt 0 ]; do
     --results-dir)
       RESULTS_DIR="${2:?Missing value for --results-dir}"
       shift 2
+      ;;
+    --sync-host-codex-auth)
+      SYNC_HOST_CODEX_AUTH=1
+      shift
       ;;
     -h|--help)
       usage
@@ -80,6 +88,29 @@ bool() {
   fi
 }
 
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+sync_host_codex_auth() {
+  local script="$REPO_ROOT/evaluation/sbx-sandbox-pattern/copy-codex-auth-to-sbx.sh"
+
+  test -f "$script" || {
+    echo "Codex auth sync helper is missing: $script" >&2
+    exit 1
+  }
+
+  log "Syncing host ChatGPT Codex auth into sbx"
+  bash "$script" --sbx "$SBX_NAME"
+}
+
 refresh_skill() {
   log "Installing only the skill under test inside sbx: $SKILL_DEST"
   sbx exec "$SBX_NAME" -- env SKILL_SOURCE="$SKILL_SOURCE" SKILL_DEST="$SKILL_DEST" sh -lc '
@@ -94,17 +125,37 @@ refresh_skill() {
 }
 
 check_ready() {
+  local status
+
   log "Checking Codex runner inside sbx"
-  sbx exec "$SBX_NAME" -- sh -lc '
+  status="$(sbx exec "$SBX_NAME" -- sh -lc '
     command -v codex >/dev/null 2>&1 || {
       echo "codex is not installed in sbx" >&2
       exit 1
     }
-    codex login status >/dev/null 2>&1 || {
+    codex login status || {
       echo "codex is not authenticated in sbx" >&2
       exit 1
     }
-  ' >/dev/null
+  ' 2>&1)" || {
+    printf '%s\n' "$status" >&2
+    exit 1
+  }
+
+  case "$status" in
+    *"Logged in using ChatGPT"*)
+      ;;
+    *"API key"*)
+      printf '%s\n' "$status" >&2
+      echo "Codex in sbx is authenticated with an API key. Re-run with --sync-host-codex-auth or use codex login --device-auth inside sbx." >&2
+      exit 1
+      ;;
+    *)
+      printf '%s\n' "$status" >&2
+      echo "Codex in sbx is not authenticated with ChatGPT." >&2
+      exit 1
+      ;;
+  esac
 }
 
 make_prompt() {
@@ -255,6 +306,10 @@ summary_md="$RESULTS_DIR/summary.md"
 
 mkdir -p "$host_run_dir"
 printf 'model\teffort\texit_code\tresult\telapsed_seconds\ttokens_used\tauth_failed\ttracker_exists\tbrief_exists\tarchitecture_exists\tsource_research_absent\tscenarios_absent\tharness_absent\tasks_questions\tquestion_count\tno_research\tno_harness\tmentions_tracker_first\ttarget_dir\tlog_dir\n' > "$summary_tsv"
+
+if is_truthy "$SYNC_HOST_CODEX_AUTH"; then
+  sync_host_codex_auth
+fi
 
 refresh_skill
 check_ready

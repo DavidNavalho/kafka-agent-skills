@@ -49,6 +49,7 @@ Codex auth gate:
 - Do not set `OPENAI_API_KEY`, `CODEX_API_KEY`, or use `codex login --with-api-key` for subscription-based evals.
 - Keep auth state under the sandbox user's `CODEX_HOME`/`~/.codex`.
 - `codex login status` must not report API-key login before running this eval.
+- The runner can copy host ChatGPT auth into sbx when explicitly requested with `--sync-host-codex-auth`.
 - Run a cheap `codex exec --ephemeral` smoke call before expensive scenarios, closing stdin explicitly and satisfying Codex's git-repo guard: `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `codex login status` is useful but insufficient because it can pass with stale or unusable credentials.
 - See `evaluation/sbx-sandbox-pattern/sbx-skill-notes.md` for the future generic sbx skill pattern and official Codex doc links.
 
@@ -67,6 +68,7 @@ Runner:
 
 ```bash
 evaluation/kafka-architecture-investigation/run-sbx-smoke.sh \
+  --sync-host-codex-auth \
   --model gpt-5.3-codex-spark \
   --effort low
 ```

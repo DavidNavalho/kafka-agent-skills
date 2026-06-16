@@ -68,10 +68,10 @@ Recommended sbx workflow:
 5. If copying host subscription auth into sbx is necessary, treat `auth.json` as a secret, copy only that file, and ensure it is not captured in eval artifacts, logs, commits, or prompts:
 
    ```bash
-   sbx exec -i agent-skills-eval sh -lc 'mkdir -p "$HOME/.codex"; umask 077; cat > "$HOME/.codex/auth.json"' < "$HOME/.codex/auth.json"
+   evaluation/sbx-sandbox-pattern/copy-codex-auth-to-sbx.sh --sbx agent-skills-eval
    ```
 
-   Prefer this narrow copy over mounting the whole host `~/.codex` directory.
+   Prefer this narrow copy over mounting the whole host `~/.codex` directory. If reimplementing the command, remember that `sbx exec` needs `-i` for stdin forwarding.
 6. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
 7. Verify with `codex login status`; it must not report API-key login for subscription-based evals.
 8. Run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly and satisfy Codex's git-repo guard for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
