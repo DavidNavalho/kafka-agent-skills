@@ -66,7 +66,7 @@ Recommended sbx workflow:
 3. Avoid `codex login --with-api-key`, `OPENAI_API_KEY`, and `CODEX_API_KEY` when the objective is subscription-based auth.
 4. If copying `auth.json` into a container is necessary, treat it as a secret, copy only the auth file, and ensure it is not captured in eval artifacts, logs, commits, or prompts.
 5. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
-6. Verify with `codex login status`, then run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
+6. Verify with `codex login status`, then run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- codex exec --ephemeral "Reply with: auth ok" < /dev/null`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
 
 Useful official references:
 
