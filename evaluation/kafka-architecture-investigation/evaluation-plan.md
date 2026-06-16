@@ -4,6 +4,8 @@ Purpose: forward-test `kafka-architecture-investigation` in `sbx` so the skill s
 
 This skill should not be evaluated first with a full Kafka proof. Its cheapest and most important failure modes are workflow discipline, context management, intake quality, ADR gating, and autonomous execution behavior.
 
+Active run status is tracked in `evaluation/kafka-architecture-investigation/evaluation-tracker.md`. Start there when resuming evaluation work; use this plan for phase details and scoring expectations.
+
 ## Cost Strategy
 
 - Run one scenario/model/effort at a time.
