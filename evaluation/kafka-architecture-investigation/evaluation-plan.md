@@ -47,7 +47,7 @@ Codex auth gate:
 - Preferred human-driven sandbox setup is `codex login --device-auth` from inside the sbx shell.
 - Do not set `OPENAI_API_KEY`, `CODEX_API_KEY`, or use `codex login --with-api-key` for subscription-based evals.
 - Keep auth state under the sandbox user's `CODEX_HOME`/`~/.codex`.
-- Run a cheap `codex exec --ephemeral` smoke call before expensive scenarios, closing stdin explicitly: `sbx exec agent-skills-eval -- codex exec --ephemeral "Reply with: auth ok" < /dev/null`. `codex login status` is useful but insufficient because it can pass with stale or unusable credentials.
+- Run a cheap `codex exec --ephemeral` smoke call before expensive scenarios, closing stdin explicitly and satisfying Codex's git-repo guard: `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `codex login status` is useful but insufficient because it can pass with stale or unusable credentials.
 - See `evaluation/sbx-sandbox-pattern/sbx-skill-notes.md` for the future generic sbx skill pattern and official Codex doc links.
 
 First smoke runner attempt:
