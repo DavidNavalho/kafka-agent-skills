@@ -44,9 +44,11 @@ Initial sbx observation:
 Codex auth gate:
 
 - For this evaluation, use ChatGPT-managed Codex auth inside sbx, not API-key auth.
+- If `codex login status` reports API-key login, run `codex logout` inside sbx before re-authenticating.
 - Preferred human-driven sandbox setup is `codex login --device-auth` from inside the sbx shell.
 - Do not set `OPENAI_API_KEY`, `CODEX_API_KEY`, or use `codex login --with-api-key` for subscription-based evals.
 - Keep auth state under the sandbox user's `CODEX_HOME`/`~/.codex`.
+- `codex login status` must not report API-key login before running this eval.
 - Run a cheap `codex exec --ephemeral` smoke call before expensive scenarios, closing stdin explicitly and satisfying Codex's git-repo guard: `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `codex login status` is useful but insufficient because it can pass with stale or unusable credentials.
 - See `evaluation/sbx-sandbox-pattern/sbx-skill-notes.md` for the future generic sbx skill pattern and official Codex doc links.
 

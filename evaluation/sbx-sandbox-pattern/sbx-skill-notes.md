@@ -62,11 +62,13 @@ Official Codex docs distinguish these modes:
 Recommended sbx workflow:
 
 1. Keep Codex state inside the sandbox user's `CODEX_HOME`/`~/.codex`; do not mount the host `~/.codex` wholesale into an untrusted sandbox.
-2. Open a shell in the sandbox and run `codex login --device-auth`, then complete the browser/device-code flow outside the sandbox.
-3. Avoid `codex login --with-api-key`, `OPENAI_API_KEY`, and `CODEX_API_KEY` when the objective is subscription-based auth.
-4. If copying `auth.json` into a container is necessary, treat it as a secret, copy only the auth file, and ensure it is not captured in eval artifacts, logs, commits, or prompts.
-5. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
-6. Verify with `codex login status`, then run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly and satisfy Codex's git-repo guard for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
+2. If `codex login status` says the sandbox is logged in with an API key, run `codex logout` inside sbx first.
+3. Open a shell in the sandbox and run `codex login --device-auth`, then complete the browser/device-code flow outside the sandbox.
+4. Avoid `codex login --with-api-key`, `OPENAI_API_KEY`, and `CODEX_API_KEY` when the objective is subscription-based auth.
+5. If copying `auth.json` into a container is necessary, treat it as a secret, copy only the auth file, and ensure it is not captured in eval artifacts, logs, commits, or prompts.
+6. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
+7. Verify with `codex login status`; it must not report API-key login for subscription-based evals.
+8. Run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly and satisfy Codex's git-repo guard for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
 
 Useful official references:
 
@@ -80,6 +82,7 @@ Useful official references:
 - Agent cannot see the repo path because the host path was not mounted into sbx.
 - System-local agent files such as `~/.codex/skills/.system/...` are not visible unless explicitly mounted.
 - Agent is not authenticated inside the sandbox.
+- Agent is authenticated with an API key inside the sandbox when the eval requires ChatGPT/subscription auth.
 - Agent auth status may be stale: `codex login status` can pass while the first `codex exec` call fails with API 401.
 - Python packages available on the host, such as `PyYAML`, may be missing inside the sandbox.
 - Docker or Docker Compose behavior differs across `sbx exec` calls.
