@@ -5,6 +5,7 @@
 - After `SKILL.md`, read this tracker first and nothing else.
 - Resume from the earliest checklist row whose status is not `done`.
 - For the active row, read only the files and references listed in `Read Now`.
+- The `Current Cursor` must mirror the active checklist row, including the complete `Read now` list; do not remove references after reading them.
 - If a `Read Now` investigation file is missing, create it from `assets/templates/` before reading it.
 - Do not read all references, templates, or investigation docs for general context.
 - Keep this tracker concise. Put detailed reasoning in the files named by `Write/Update`.

@@ -210,7 +210,7 @@ score_run() {
   local tracker="$host_run_dir/TRACKER.md"
 
   local tracker_exists brief_exists arch_exists source_research_absent scenarios_absent harness_absent
-  local asks_questions no_research no_harness question_count mentions_tracker_first read_now_present auth_failed known_facts_captured result
+  local asks_questions no_research no_harness question_count mentions_tracker_first read_now_present auth_failed known_facts_captured s01_cursor_complete result
 
   tracker_exists="$(bool test -s "$tracker")"
   brief_exists="$(bool test -s "$brief")"
@@ -243,6 +243,11 @@ score_run() {
   fi
   mentions_tracker_first="$(bool grep -Eiq 'tracker|TRACKER.md' "$final")"
   read_now_present="$(bool grep -q 'Read now:' "$tracker")"
+  s01_cursor_complete="$(bool sh -c '
+    grep -Eiq "Read now:.*references/intake\\.md" "$1" &&
+    grep -Eiq "Read now:.*INVESTIGATION_BRIEF\\.md" "$1" &&
+    grep -Eiq "Read now:.*REFERENCE_ARCHITECTURE\\.md" "$1"
+  ' sh "$tracker")"
   auth_failed="$(bool grep -Eq '401 Unauthorized|Incorrect API key' "$trace")"
   question_count="$(awk '
     /^[[:space:]]*[0-9]+[.)][[:space:]]+/ { numbered++ }
@@ -272,18 +277,21 @@ score_run() {
      [ "$no_research" = "yes" ] &&
      [ "$no_harness" = "yes" ] &&
      [ "$read_now_present" = "yes" ] &&
+     [ "$s01_cursor_complete" = "yes" ] &&
      [ "$question_count" -ge 1 ] &&
      [ "$question_count" -le 5 ]; then
     result="pass"
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$result" \
     "$auth_failed" \
     "$tracker_exists" \
     "$brief_exists" \
     "$arch_exists" \
     "$known_facts_captured" \
+    "$read_now_present" \
+    "$s01_cursor_complete" \
     "$source_research_absent" \
     "$scenarios_absent" \
     "$harness_absent" \
@@ -303,10 +311,10 @@ write_markdown_summary() {
     echo
     echo "Run set: \`$RUN_SET\`"
     echo
-    echo '| Model | Effort | Exit | Result | Seconds | Tokens | Auth Failed | Tracker | Brief | Architecture | Known Facts Captured | No Research Doc | No Scenarios | No Harness | Asked Questions | Question Count | No Research Commands | No Harness Commands | Mentions Tracker |'
-    echo '|---|---:|---:|---|---:|---:|---|---|---|---|---|---|---|---|---|---:|---|---|---|'
+    echo '| Model | Effort | Exit | Result | Seconds | Tokens | Auth Failed | Tracker | Brief | Architecture | Known Facts Captured | Read Now Present | S01 Cursor Complete | No Research Doc | No Scenarios | No Harness | Asked Questions | Question Count | No Research Commands | No Harness Commands | Mentions Tracker |'
+    echo '|---|---:|---:|---|---:|---:|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|'
     awk -F '\t' 'NR > 1 {
-      printf "| `%s` | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+      printf "| `%s` | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
     }' "$summary_tsv"
   } > "$summary_md"
 }
@@ -321,7 +329,7 @@ summary_tsv="$RESULTS_DIR/summary.tsv"
 summary_md="$RESULTS_DIR/summary.md"
 
 mkdir -p "$host_run_dir"
-printf 'model\teffort\texit_code\tresult\telapsed_seconds\ttokens_used\tauth_failed\ttracker_exists\tbrief_exists\tarchitecture_exists\tknown_facts_captured\tsource_research_absent\tscenarios_absent\tharness_absent\tasks_questions\tquestion_count\tno_research\tno_harness\tmentions_tracker_first\ttarget_dir\tlog_dir\n' > "$summary_tsv"
+printf 'model\teffort\texit_code\tresult\telapsed_seconds\ttokens_used\tauth_failed\ttracker_exists\tbrief_exists\tarchitecture_exists\tknown_facts_captured\tread_now_present\ts01_cursor_complete\tsource_research_absent\tscenarios_absent\tharness_absent\tasks_questions\tquestion_count\tno_research\tno_harness\tmentions_tracker_first\ttarget_dir\tlog_dir\n' > "$summary_tsv"
 
 if is_truthy "$SYNC_HOST_CODEX_AUTH"; then
   sync_host_codex_auth
@@ -378,9 +386,9 @@ for doc in TRACKER.md INVESTIGATION_BRIEF.md REFERENCE_ARCHITECTURE.md SOURCE_RE
 done
 
 scores="$(score_run "$host_run_dir")"
-IFS=$'\t' read -r result auth_failed tracker_exists brief_exists architecture_exists known_facts_captured source_research_absent scenarios_absent harness_absent asks_questions question_count no_research no_harness mentions_tracker_first <<< "$scores"
+IFS=$'\t' read -r result auth_failed tracker_exists brief_exists architecture_exists known_facts_captured read_now_present s01_cursor_complete source_research_absent scenarios_absent harness_absent asks_questions question_count no_research no_harness mentions_tracker_first <<< "$scores"
 
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
   "$MODEL" \
   "$EFFORT" \
   "$exit_code" \
@@ -392,6 +400,8 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t
   "$brief_exists" \
   "$architecture_exists" \
   "$known_facts_captured" \
+  "$read_now_present" \
+  "$s01_cursor_complete" \
   "$source_research_absent" \
   "$scenarios_absent" \
   "$harness_absent" \
