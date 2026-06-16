@@ -7,7 +7,7 @@ This skill should not be evaluated first with a full Kafka proof. Its cheapest a
 ## Cost Strategy
 
 - Run one scenario/model/effort at a time.
-- Start with low-cost models: `gpt-5.3-codex-spark` low, then `gpt-5.4-mini` low.
+- Start with low-cost models: `gpt-5.4-mini` low by default; try `gpt-5.3-codex-spark` low only when it is available and not capacity-limited.
 - Use document-only scenarios first. Do not build Kafka, clone Kafka, or run Docker until the cheap workflow checks pass.
 - Record seconds, approximate tokens, exit status, and whether the agent respected tracker `Read Now`.
 - Escalate to higher reasoning or real Kafka harnesses only when a low-cost model fails for a reason that may be model capacity rather than skill design.
@@ -44,7 +44,7 @@ Initial sbx observation:
 Codex auth gate:
 
 - For this evaluation, use ChatGPT-managed Codex auth inside sbx, not API-key auth.
-- If `codex login status` reports API-key login, run `codex logout` inside sbx before re-authenticating.
+- If `codex login status` reports API-key login, use the auth-sync helper or delete the sandbox auth cache file locally before re-authenticating. Do not run `codex logout` in a sandbox that may contain copied host ChatGPT credentials.
 - Preferred human-driven sandbox setup is `codex login --device-auth` from inside the sbx shell.
 - Do not set `OPENAI_API_KEY`, `CODEX_API_KEY`, or use `codex login --with-api-key` for subscription-based evals.
 - Keep auth state under the sandbox user's `CODEX_HOME`/`~/.codex`.
@@ -70,6 +70,16 @@ First auth-sync smoke attempt:
 - Error: `refresh_token_invalidated` / `token_revoked` after the helper ran `codex logout` inside sbx before copying host auth.
 - Harness finding: never run `codex logout` in sbx after host auth has been copied there; delete the sandbox auth cache file locally instead.
 
+First passing tracker smoke:
+
+- Command: `evaluation/kafka-architecture-investigation/run-sbx-smoke.sh --sync-host-codex-auth --model gpt-5.4-mini --effort low`
+- Result: passed Phase 1 tracker-first smoke.
+- Evidence: `evaluation/kafka-architecture-investigation/evaluation-runs/20260616-115218/summary.md`
+- Model/effort: `gpt-5.4-mini` / `low`
+- Tokens: `14532`
+- Behavior: created tracker, investigation brief, and reference architecture only; captured known KRaft and reduced-broker facts; asked four focused intake questions; did not research docs/source or build scenarios/harnesses.
+- Harness finding: the summary TSV writer needed one extra field after adding `known_facts_captured`; fixed after this run.
+
 ## Phase 1: Trigger And Tracker-First Smoke
 
 Runner:
@@ -77,7 +87,7 @@ Runner:
 ```bash
 evaluation/kafka-architecture-investigation/run-sbx-smoke.sh \
   --sync-host-codex-auth \
-  --model gpt-5.3-codex-spark \
+  --model gpt-5.4-mini \
   --effort low
 ```
 

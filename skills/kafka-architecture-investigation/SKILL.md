@@ -19,6 +19,7 @@ This skill is not a general "make me a Kafka lab" workflow. If the available ski
 - After reading this `SKILL.md`, bootstrap or read `TRACKER.md` before reading any project investigation file or skill reference.
 - Resume from the earliest non-`done` row in the tracker checklist. Read only the files and references named by that row.
 - Start with an interactive synchronization loop. Ask at least one question when the research-ready gate is blocked, and ask no more than five focused questions in one turn.
+- During `S01-user-sync`, record any facts already supplied by the user in `INVESTIGATION_BRIEF.md` and `REFERENCE_ARCHITECTURE.md` before asking the next question batch. Ask only for the missing facts needed by the research-ready gate.
 - After intake and source research are sufficient, drive the work yourself: ADR, scenario/spec, harness, execution, and report. Stop only for missing user facts, destructive actions, unclear policy tradeoffs, or external blockers.
 - After the ADR completion gate is met, run an autonomous implementation loop: pick the next pending step in `IMPLEMENTATION_SPEC.md`, execute it, validate it, update evidence and status, then continue until all steps are done or a stop condition is reached.
 - Treat docs as useful but incomplete. Use official docs for intended behavior, source code for implementation behavior, local tests for version-specific behavior, and harness artifacts as final evidence.

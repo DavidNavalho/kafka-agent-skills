@@ -9,7 +9,7 @@ Run a low-cost sbx evaluation for kafka-architecture-investigation.
 
 Options:
   --sbx NAME           sbx sandbox name. Defaults to agent-skills-eval.
-  --model NAME         Codex model. Defaults to gpt-5.3-codex-spark.
+  --model NAME         Codex model. Defaults to gpt-5.4-mini.
   --effort NAME        Reasoning effort. Defaults to low.
   --results-dir DIR    Host results directory.
   --sync-host-codex-auth
@@ -18,7 +18,7 @@ Options:
 
 Environment:
   SBX_NAME             agent-skills-eval
-  MODEL                gpt-5.3-codex-spark
+  MODEL                gpt-5.4-mini
   EFFORT               low
   SANDBOX_WORKSPACE    /home/agent/workspace
   SKILL_SOURCE         Repo-local skills/kafka-architecture-investigation
@@ -32,7 +32,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 SBX_NAME="${SBX_NAME:-agent-skills-eval}"
-MODEL="${MODEL:-gpt-5.3-codex-spark}"
+MODEL="${MODEL:-gpt-5.4-mini}"
 EFFORT="${EFFORT:-low}"
 SANDBOX_WORKSPACE="${SANDBOX_WORKSPACE:-/home/agent/workspace}"
 SKILL_SOURCE="${SKILL_SOURCE:-$REPO_ROOT/skills/kafka-architecture-investigation}"
@@ -210,7 +210,7 @@ score_run() {
   local tracker="$host_run_dir/TRACKER.md"
 
   local tracker_exists brief_exists arch_exists source_research_absent scenarios_absent harness_absent
-  local asks_questions no_research no_harness question_count mentions_tracker_first read_now_present auth_failed result
+  local asks_questions no_research no_harness question_count mentions_tracker_first read_now_present auth_failed known_facts_captured result
 
   tracker_exists="$(bool test -s "$tracker")"
   brief_exists="$(bool test -s "$brief")"
@@ -231,7 +231,7 @@ score_run() {
     harness_absent="yes"
   fi
   asks_questions="$(bool grep -Eq '\\?|What |Which |Could you|Can you|Please confirm' "$final")"
-  if grep -Eiq 'git clone|github.com/apache/kafka|kafka.apache.org|confluent.io|SOURCE_RESEARCH' "$trace"; then
+  if grep -Eiq 'git clone|github.com/apache/kafka|https?://(kafka\.apache\.org|docs\.confluent\.io|www\.confluent\.io)' "$trace"; then
     no_research="no"
   else
     no_research="yes"
@@ -244,12 +244,27 @@ score_run() {
   mentions_tracker_first="$(bool grep -Eiq 'tracker|TRACKER.md' "$final")"
   read_now_present="$(bool grep -q 'Read now:' "$tracker")"
   auth_failed="$(bool grep -Eq '401 Unauthorized|Incorrect API key' "$trace")"
-  question_count="$(grep -Eo '\\?' "$final" | wc -l | tr -d ' ')"
+  question_count="$(awk '
+    /^[[:space:]]*[0-9]+[.)][[:space:]]+/ { numbered++ }
+    { qmarks += gsub(/\?/, "?") }
+    END {
+      if (qmarks > 0) {
+        print qmarks
+      } else {
+        print numbered + 0
+      }
+    }
+  ' "$final")"
+  known_facts_captured="$(bool sh -c '
+    grep -Eiq "kraft" "$1" "$2" &&
+    grep -Eiq "fewer brokers|smaller|reduced|less brokers|target.*fewer|fewer.*broker" "$1" "$2"
+  ' sh "$brief" "$arch")"
 
   result="fail"
   if [ "$tracker_exists" = "yes" ] &&
      [ "$brief_exists" = "yes" ] &&
      [ "$arch_exists" = "yes" ] &&
+     [ "$known_facts_captured" = "yes" ] &&
      [ "$source_research_absent" = "yes" ] &&
      [ "$scenarios_absent" = "yes" ] &&
      [ "$harness_absent" = "yes" ] &&
@@ -262,12 +277,13 @@ score_run() {
     result="pass"
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$result" \
     "$auth_failed" \
     "$tracker_exists" \
     "$brief_exists" \
     "$arch_exists" \
+    "$known_facts_captured" \
     "$source_research_absent" \
     "$scenarios_absent" \
     "$harness_absent" \
@@ -287,10 +303,10 @@ write_markdown_summary() {
     echo
     echo "Run set: \`$RUN_SET\`"
     echo
-    echo '| Model | Effort | Exit | Result | Seconds | Tokens | Auth Failed | Tracker | Brief | Architecture | No Research Doc | No Scenarios | No Harness | Asked Questions | Question Count | No Research Commands | No Harness Commands | Mentions Tracker |'
-    echo '|---|---:|---:|---|---:|---:|---|---|---|---|---|---|---|---|---:|---|---|---|'
+    echo '| Model | Effort | Exit | Result | Seconds | Tokens | Auth Failed | Tracker | Brief | Architecture | Known Facts Captured | No Research Doc | No Scenarios | No Harness | Asked Questions | Question Count | No Research Commands | No Harness Commands | Mentions Tracker |'
+    echo '|---|---:|---:|---|---:|---:|---|---|---|---|---|---|---|---|---|---:|---|---|---|'
     awk -F '\t' 'NR > 1 {
-      printf "| `%s` | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+      printf "| `%s` | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
     }' "$summary_tsv"
   } > "$summary_md"
 }
@@ -305,7 +321,7 @@ summary_tsv="$RESULTS_DIR/summary.tsv"
 summary_md="$RESULTS_DIR/summary.md"
 
 mkdir -p "$host_run_dir"
-printf 'model\teffort\texit_code\tresult\telapsed_seconds\ttokens_used\tauth_failed\ttracker_exists\tbrief_exists\tarchitecture_exists\tsource_research_absent\tscenarios_absent\tharness_absent\tasks_questions\tquestion_count\tno_research\tno_harness\tmentions_tracker_first\ttarget_dir\tlog_dir\n' > "$summary_tsv"
+printf 'model\teffort\texit_code\tresult\telapsed_seconds\ttokens_used\tauth_failed\ttracker_exists\tbrief_exists\tarchitecture_exists\tknown_facts_captured\tsource_research_absent\tscenarios_absent\tharness_absent\tasks_questions\tquestion_count\tno_research\tno_harness\tmentions_tracker_first\ttarget_dir\tlog_dir\n' > "$summary_tsv"
 
 if is_truthy "$SYNC_HOST_CODEX_AUTH"; then
   sync_host_codex_auth
@@ -362,9 +378,9 @@ for doc in TRACKER.md INVESTIGATION_BRIEF.md REFERENCE_ARCHITECTURE.md SOURCE_RE
 done
 
 scores="$(score_run "$host_run_dir")"
-IFS=$'\t' read -r result auth_failed tracker_exists brief_exists architecture_exists source_research_absent scenarios_absent harness_absent asks_questions question_count no_research no_harness mentions_tracker_first <<< "$scores"
+IFS=$'\t' read -r result auth_failed tracker_exists brief_exists architecture_exists known_facts_captured source_research_absent scenarios_absent harness_absent asks_questions question_count no_research no_harness mentions_tracker_first <<< "$scores"
 
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
   "$MODEL" \
   "$EFFORT" \
   "$exit_code" \
@@ -375,6 +391,7 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t
   "$tracker_exists" \
   "$brief_exists" \
   "$architecture_exists" \
+  "$known_facts_captured" \
   "$source_research_absent" \
   "$scenarios_absent" \
   "$harness_absent" \
