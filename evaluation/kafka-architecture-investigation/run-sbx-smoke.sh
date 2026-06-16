@@ -25,6 +25,9 @@ Environment:
   SKILL_DEST           /home/agent/.codex/skills/kafka-architecture-investigation
   SYNC_HOST_CODEX_AUTH 1 to copy host ChatGPT Codex auth into sbx first.
   PROMPT_TEXT          Optional prompt. Use {{TARGET_DIR}} for insertion.
+  EXPECTED_FACT_PATTERNS
+                      Optional newline-separated regexes that must appear in
+                      INVESTIGATION_BRIEF.md or REFERENCE_ARCHITECTURE.md.
 USAGE
 }
 
@@ -41,6 +44,7 @@ SYNC_HOST_CODEX_AUTH="${SYNC_HOST_CODEX_AUTH:-0}"
 RUN_SET="${RUN_SET:-$(date +%Y%m%d-%H%M%S)}"
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/evaluation-runs/$RUN_SET}"
 PROMPT_TEXT="${PROMPT_TEXT:-}"
+EXPECTED_FACT_PATTERNS="${EXPECTED_FACT_PATTERNS:-}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -86,6 +90,31 @@ bool() {
   else
     printf 'no'
   fi
+}
+
+default_expected_fact_patterns() {
+  cat <<'PATTERNS'
+kraft
+fewer brokers|smaller|reduced|less brokers|target.*fewer|fewer.*broker
+PATTERNS
+}
+
+expected_facts_captured() {
+  local brief="$1"
+  local arch="$2"
+  local pattern
+  local patterns="$EXPECTED_FACT_PATTERNS"
+
+  if [ -z "$patterns" ]; then
+    patterns="$(default_expected_fact_patterns)"
+  fi
+
+  while IFS= read -r pattern; do
+    [ -n "$pattern" ] || continue
+    grep -Eiq "$pattern" "$brief" "$arch" || return 1
+  done <<PATTERNS
+$patterns
+PATTERNS
 }
 
 is_truthy() {
@@ -260,10 +289,7 @@ score_run() {
       }
     }
   ' "$final")"
-  known_facts_captured="$(bool sh -c '
-    grep -Eiq "kraft" "$1" "$2" &&
-    grep -Eiq "fewer brokers|smaller|reduced|less brokers|target.*fewer|fewer.*broker" "$1" "$2"
-  ' sh "$brief" "$arch")"
+  known_facts_captured="$(bool expected_facts_captured "$brief" "$arch")"
 
   result="fail"
   if [ "$tracker_exists" = "yes" ] &&
@@ -350,10 +376,10 @@ sbx exec "$SBX_NAME" -- env SANDBOX_RUN_DIR="$sandbox_run_dir" TARGET_DIR="$targ
 log "Running tracker-smoke model=$MODEL effort=$EFFORT target=$target_dir"
 started_at="$(date +%s)"
 set +e
-sbx exec "$SBX_NAME" -- env MODEL="$MODEL" EFFORT="$EFFORT" SANDBOX_WORKSPACE="$SANDBOX_WORKSPACE" SANDBOX_RUN_DIR="$sandbox_run_dir" sh -lc '
+sbx exec "$SBX_NAME" -- env MODEL="$MODEL" EFFORT="$EFFORT" TARGET_DIR="$target_dir" SANDBOX_RUN_DIR="$sandbox_run_dir" sh -lc '
   codex exec \
     --skip-git-repo-check \
-    --cd "$SANDBOX_WORKSPACE" \
+    --cd "$TARGET_DIR" \
     --dangerously-bypass-approvals-and-sandbox \
     -m "$MODEL" \
     -c "model_reasoning_effort=\"$EFFORT\"" \

@@ -4,9 +4,9 @@ Use this file as the active watch/update surface for the validation ladder. Keep
 
 ## Current Cursor
 
-- Active phase: B-prompt-variants
+- Active phase: C-resume-intake-loop
 - Status: in_progress
-- Next action: Run prompt-variant smokes for cluster linking, transactions, backup-tool validation, and vague Kafka architecture prompts.
+- Next action: Seed a partial S01 workspace and verify tracker-first resume behavior without source research.
 - Stop/ask user when: a run requires higher-cost models, a Kafka/Docker harness, external network-heavy source research, or real Kafka implementation work.
 
 ## Validation Ladder
@@ -14,8 +14,8 @@ Use this file as the active watch/update surface for the validation ladder. Keep
 | Phase | Status | Purpose | Gate | Evidence |
 | --- | --- | --- | --- | --- |
 | A-repeat-cheap-smokes | done | Check repeatability of trigger, tracker-first behavior, known-fact capture, question count, and no premature research/build. | 3-5 clean runs pass or produce only skill/harness fixes. | Clean passes: `evaluation-runs/20260616-115218/summary.md`, `evaluation-runs/20260616-170935/summary.md`, `evaluation-runs/20260616-171704/summary.md`. |
-| B-prompt-variants | in_progress | Check generalization across snapshot restore, cluster linking, transactions, backup-tool validation, and vague Kafka architecture prompts. | Each variant stays in S01, captures known facts, asks focused questions, and avoids premature research/build. | |
-| C-resume-intake-loop | pending | Check tracker-first resume behavior from partial S01 workspaces. | Agent reads only active `Read Now`, preserves prior facts, asks only missing questions, and marks S01 done only at the gate. | |
+| B-prompt-variants | done | Check generalization across snapshot restore, cluster linking, transactions, backup-tool validation, and vague Kafka architecture prompts. | Each variant stays in S01, captures known facts, asks focused questions, and avoids premature research/build. | Passed variants: `phase-b-cluster-linking-20260616-172436`, `phase-b-transactions-20260616-172932`, `phase-b-backup-tool-20260616-173210`, `phase-b-vague-20260616-173354`. |
+| C-resume-intake-loop | in_progress | Check tracker-first resume behavior from partial S01 workspaces. | Agent reads only active `Read Now`, preserves prior facts, asks only missing questions, and marks S01 done only at the gate. | |
 | D-adr-scenario-spec-no-kafka | pending | Check ADR gate and scenario/spec expansion with fake/simple research inputs, without Kafka/Docker cost. | ADR exists before detailed scenarios; scenarios map objective -> ADR claim -> deterministic test; spec has small executable steps. | |
 | E-toy-autonomous-loop | pending | Check autonomous implementation loop with shell-testable toy steps. | Agent executes next pending step, validates, updates evidence/status, and continues until done or blocked. | |
 | F-small-kafka-golden-path | pending | Check real Kafka harness contract with a minimal KRaft lab and one baseline scenario. | Fixed paths, `reset -> seed -> capture -> mutate -> start -> assert -> report`, and evidence under `artifacts/kafka-architecture-investigation/`. | |
@@ -33,6 +33,11 @@ Use this file as the active watch/update surface for the validation ladder. Keep
 | 2026-06-16 | A | `gpt-5.4-mini`/low | passed | 16740 | `evaluation-runs/20260616-170935/summary.md` | Canonical tracker structure preserved after bootstrap script fix; asked four intake questions. |
 | 2026-06-16 | A | `gpt-5.4-mini`/low | failed-after-review | 8720 | `evaluation-runs/20260616-171307/summary.md` | Summary passed, but manual inspection found S01 Current Cursor dropped `references/intake.md`; fixed tracker template and scorer with `s01_cursor_complete`. |
 | 2026-06-16 | A | `gpt-5.4-mini`/low | passed | 14628 | `evaluation-runs/20260616-171704/summary.md` | Passed stricter gate with full S01 cursor, known facts captured, four questions, and no premature research/build. |
+| 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 12793 | `evaluation-runs/phase-b-cluster-linking-20260616-172436/summary.md` | Captured Cluster Linking, mirror promotion, and cutover facts; asked four cutover-specific questions. |
+| 2026-06-16 | B | `gpt-5.4-mini`/low | failed | 15644 | `evaluation-runs/phase-b-transactions-20260616-172634/summary.md` | Harness ran Codex from `/home/agent/workspace`, so files were written outside the target; fixed runner to use `--cd "$TARGET_DIR"`. |
+| 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 8943 | `evaluation-runs/phase-b-transactions-20260616-172932/summary.md` | Captured transactional IDs and `read_committed`; asked four transaction-specific questions. |
+| 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 10896 | `evaluation-runs/phase-b-backup-tool-20260616-173210/summary.md` | Captured backup-tool recovery claim, internal topics, offsets, and transaction state. |
+| 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 14173 | `evaluation-runs/phase-b-vague-20260616-173354/summary.md` | Preserved unknowns and asked three broad orientation questions without inventing a track. |
 
 ## Open Follow-Ups
 
