@@ -65,7 +65,13 @@ Recommended sbx workflow:
 2. If `codex login status` says the sandbox is logged in with an API key, run `codex logout` inside sbx first.
 3. Open a shell in the sandbox and run `codex login --device-auth`, then complete the browser/device-code flow outside the sandbox.
 4. Avoid `codex login --with-api-key`, `OPENAI_API_KEY`, and `CODEX_API_KEY` when the objective is subscription-based auth.
-5. If copying `auth.json` into a container is necessary, treat it as a secret, copy only the auth file, and ensure it is not captured in eval artifacts, logs, commits, or prompts.
+5. If copying host subscription auth into sbx is necessary, treat `auth.json` as a secret, copy only that file, and ensure it is not captured in eval artifacts, logs, commits, or prompts:
+
+   ```bash
+   sbx exec agent-skills-eval -- sh -lc 'mkdir -p "$HOME/.codex"; umask 077; cat > "$HOME/.codex/auth.json"' < "$HOME/.codex/auth.json"
+   ```
+
+   Prefer this narrow copy over mounting the whole host `~/.codex` directory.
 6. For repeatable trusted automation, prefer a Codex access token where the workspace supports it; store it in a secret manager and rotate it.
 7. Verify with `codex login status`; it must not report API-key login for subscription-based evals.
 8. Run a tiny `codex exec --ephemeral` smoke call before starting expensive evaluations. Close stdin explicitly and satisfy Codex's git-repo guard for prompt-argument smoke calls, for example `sbx exec agent-skills-eval -- sh -lc 'codex exec --ephemeral --skip-git-repo-check "Reply with: auth ok" < /dev/null'`. `login status` only proves credentials are present; stale or wrong credentials can still fail on the first model request.
