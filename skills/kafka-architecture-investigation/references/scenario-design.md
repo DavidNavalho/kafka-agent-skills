@@ -20,7 +20,7 @@ Use the exact columns in `assets/templates/SCENARIO_MATRIX.tsv`:
 scenario_id track objective_ids adr_claim_ids purpose setup fault_or_mutation expected_result assertions artifacts implementation_step_ids status notes
 ```
 
-Statuses: `planned`, `implemented`, `passed`, `failed`, `blocked`, `nondeterministic`, `superseded`. The status cell must contain exactly one of these values, usually `planned` during S04; do not prefix it with scenario IDs, step IDs, or notes.
+Statuses: `planned`, `implemented`, `passed`, `failed`, `blocked`, `nondeterministic`, `superseded`. The status cell must contain exactly one of these values, usually `planned` during S04; do not prefix it with scenario IDs, step IDs, or notes. Do not use `done` as a scenario status; `done` is only for implementation steps and tracker rows.
 
 Every row must have exactly 13 tab-separated fields. Fill the `artifacts` field with the planned evidence path or evidence description; do not skip it, because that shifts `implementation_step_ids`, `status`, and `notes` into the wrong columns. Before marking S04 done, verify the matrix shape with an `awk -F '\t'` field-count check.
 

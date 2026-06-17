@@ -229,12 +229,22 @@ Expected:
 
 Prompt starts from S04 done with a toy implementation spec that can be completed without Kafka.
 
+Runner:
+
+```bash
+evaluation/kafka-architecture-investigation/run-phase-e-toy-loop.sh \
+  --sync-host-codex-auth \
+  --model gpt-5.4-mini \
+  --effort low
+```
+
 Expected:
 
 - Starts from the first non-`done` implementation step.
 - Executes one step, validates it, updates evidence/status, and continues.
 - Stops only when all steps are done or a real stop condition is recorded.
 - Updates `TRACKER.md` after each loop pass.
+- Uses `done` for implementation steps, and `passed`/`failed`/other scenario status values for `SCENARIO_MATRIX.tsv`; never `done` as a scenario status.
 
 ## Phase F: Small Kafka Golden Path
 
