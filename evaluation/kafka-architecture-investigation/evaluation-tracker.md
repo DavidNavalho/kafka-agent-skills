@@ -1,12 +1,12 @@
 # kafka-architecture-investigation Evaluation Tracker
 
-Use this file as the active watch/update surface for the validation ladder. Keep it concise. Put detailed logs and generated artifacts under `evaluation-runs/`; keep design rationale in `evaluation-plan.md`.
+Use this file as the active watch/update surface for the validation ladder. Keep it concise. Put detailed logs and generated artifacts under `evaluation-runs/`; keep design rationale and phase details in `evaluation-plan.md`.
 
 ## Current Cursor
 
-- Active phase: C-resume-intake-loop
+- Active phase: D-adr-scenario-spec-no-kafka
 - Status: in_progress
-- Next action: Seed a partial S01 workspace and verify tracker-first resume behavior without source research.
+- Next action: Build and run document-only Phase D fixtures for S02 source research, S03 ADR, and S04 scenario/spec expansion without Kafka/Docker.
 - Stop/ask user when: a run requires higher-cost models, a Kafka/Docker harness, external network-heavy source research, or real Kafka implementation work.
 
 ## Validation Ladder
@@ -15,8 +15,8 @@ Use this file as the active watch/update surface for the validation ladder. Keep
 | --- | --- | --- | --- | --- |
 | A-repeat-cheap-smokes | done | Check repeatability of trigger, tracker-first behavior, known-fact capture, question count, and no premature research/build. | 3-5 clean runs pass or produce only skill/harness fixes. | Clean passes: `evaluation-runs/20260616-115218/summary.md`, `evaluation-runs/20260616-170935/summary.md`, `evaluation-runs/20260616-171704/summary.md`. |
 | B-prompt-variants | done | Check generalization across snapshot restore, cluster linking, transactions, backup-tool validation, and vague Kafka architecture prompts. | Each variant stays in S01, captures known facts, asks focused questions, and avoids premature research/build. | Passed variants: `phase-b-cluster-linking-20260616-172436`, `phase-b-transactions-20260616-172932`, `phase-b-backup-tool-20260616-173210`, `phase-b-vague-20260616-173354`. |
-| C-resume-intake-loop | in_progress | Check tracker-first resume behavior from partial S01 workspaces. | Agent reads only active `Read Now`, preserves prior facts, asks only missing questions, and marks S01 done only at the gate. | |
-| D-adr-scenario-spec-no-kafka | pending | Check ADR gate and scenario/spec expansion with fake/simple research inputs, without Kafka/Docker cost. | ADR exists before detailed scenarios; scenarios map objective -> ADR claim -> deterministic test; spec has small executable steps. | |
+| C-resume-intake-loop | done | Check tracker-first resume behavior from partial S01 workspaces. | Agent reads only active `Read Now`, preserves prior facts, asks only missing questions, and marks S01 done only at the gate. | Passed two-case runner: `evaluation-runs/phase-c-resume-20260616-182639/summary.md`. |
+| D-adr-scenario-spec-no-kafka | in_progress | Check ADR gate and scenario/spec expansion with fake/simple research inputs, without Kafka/Docker cost. | ADR exists before detailed scenarios; scenarios map objective -> ADR claim -> deterministic test; spec has small executable steps. | |
 | E-toy-autonomous-loop | pending | Check autonomous implementation loop with shell-testable toy steps. | Agent executes next pending step, validates, updates evidence/status, and continues until done or blocked. | |
 | F-small-kafka-golden-path | pending | Check real Kafka harness contract with a minimal KRaft lab and one baseline scenario. | Fixed paths, `reset -> seed -> capture -> mutate -> start -> assert -> report`, and evidence under `artifacts/kafka-architecture-investigation/`. | |
 | G-historical-complex-benchmark | pending | Run one expensive confidence benchmark from prior real patterns. | Produces decision-grade report/runbook and records proven, falsified, untested, and uncertain items. | |
@@ -38,10 +38,14 @@ Use this file as the active watch/update surface for the validation ladder. Keep
 | 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 8943 | `evaluation-runs/phase-b-transactions-20260616-172932/summary.md` | Captured transactional IDs and `read_committed`; asked four transaction-specific questions. |
 | 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 10896 | `evaluation-runs/phase-b-backup-tool-20260616-173210/summary.md` | Captured backup-tool recovery claim, internal topics, offsets, and transaction state. |
 | 2026-06-16 | B | `gpt-5.4-mini`/low | passed | 14173 | `evaluation-runs/phase-b-vague-20260616-173354/summary.md` | Preserved unknowns and asked three broad orientation questions without inventing a track. |
+| 2026-06-16 | C | `gpt-5.4-mini`/low | failed | 26632 | `evaluation-runs/phase-c-resume-20260616-180923/summary.md` | Expanded runner exposed a real cursor defect: ready S01 advanced to S02 but omitted `SOURCE_RESEARCH.md` from Current Cursor. |
+| 2026-06-16 | C | `gpt-5.4-mini`/low | failed | 19531 | `evaluation-runs/phase-c-resume-20260616-181741/summary.md` | Cursor instructions improved but ready case still hand-edited cursor incorrectly; added deterministic `update-tracker-state.py`; also fixed question/no-harness scorer false positives. |
+| 2026-06-16 | C | `gpt-5.4-mini`/low | passed | 18315 | `evaluation-runs/phase-c-resume-20260616-182639/summary.md` | Partial S01 stayed in S01 and asked four questions; ready S01 used tracker updater, advanced to S02, and created no research/spec/harness artifacts. |
 
 ## Open Follow-Ups
 
 - Add a repeat-runner or prompt-fixture runner when Phase B manual repetition becomes tedious.
 - Keep `gpt-5.4-mini` low as the default smoke model; use Spark only when available and worth testing.
 - Promote the sbx auth-copy pattern into the future generic sbx skill after a few more successful runs.
+- Keep tracker phase names aligned with `evaluation-plan.md`'s A-G robustness ladder.
 - Decide whether Phase D fake research fixtures should be templates, generated setup scripts, or checked-in sample workspaces.

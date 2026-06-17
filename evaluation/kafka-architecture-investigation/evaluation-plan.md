@@ -6,6 +6,15 @@ This skill should not be evaluated first with a full Kafka proof. Its cheapest a
 
 Active run status is tracked in `evaluation/kafka-architecture-investigation/evaluation-tracker.md`. Start there when resuming evaluation work; use this plan for phase details and scoring expectations.
 
+## Watch Surfaces
+
+- `evaluation-tracker.md` is the live cursor: active phase, next action, run log, and short follow-ups only.
+- `evaluation-plan.md` is the stable plan: phase intent, gates, prompts, scoring signals, and lessons learned.
+- `evaluation-runs/<run-id>/summary.md` is the evidence surface for each model run.
+- `evaluation-runs/<run-id>/<case>/` contains raw outputs, prompts, copied docs, and traces for review.
+
+Keep the tracker concise. If a finding needs more than one or two lines, put it in the relevant run summary or this plan and link it from the tracker.
+
 ## Cost Strategy
 
 - Run one scenario/model/effort at a time.
@@ -14,7 +23,21 @@ Active run status is tracked in `evaluation/kafka-architecture-investigation/eva
 - Record seconds, approximate tokens, exit status, and whether the agent respected tracker `Read Now`.
 - Escalate to higher reasoning or real Kafka harnesses only when a low-cost model fails for a reason that may be model capacity rather than skill design.
 
-## Phase 0: Static Validation In sbx
+## Robustness Ladder
+
+The evaluation ladder deliberately starts with the cheapest behavior checks and only moves toward real Kafka implementation after the skill proves it can preserve context, resume correctly, and expand work through the intended gates.
+
+| Phase | Scope | Why It Exists | Move On When |
+| --- | --- | --- | --- |
+| A-repeat-cheap-smokes | Repeat the initial tracker-first intake smoke. | Finds trigger, bootstrap, tracker, and premature-work failures cheaply. | Several clean runs pass with known facts captured and no research/build. |
+| B-prompt-variants | Run different Kafka architecture prompts at S01. | Checks the skill is architecture-investigation shaped, not overfit to snapshot restore. | Cluster Linking, transactions, backup-tool, and vague prompts all stay in intake and ask focused questions. |
+| C-resume-intake-loop | Resume from partial S01 workspaces. | Tests the high-risk "read tracker first, continue from cursor" behavior. | Existing facts are preserved, missing questions are asked, and S01 is not advanced early. |
+| D-adr-scenario-spec-no-kafka | Use fake/simple research fixtures to force S02-S04 without Kafka cost. | Validates the source-research -> ADR -> scenario -> implementation-spec gate. | ADR precedes scenarios, scenarios map to objectives/ADR claims, and specs are small and executable. |
+| E-toy-autonomous-loop | Run a shell-testable toy implementation spec. | Checks the self-driven implementation loop without Kafka/Docker cost. | Agent executes, validates, records evidence, updates tracker, and continues until done or blocked. |
+| F-small-kafka-golden-path | Run one minimal real Kafka/KRaft path. | Verifies the lab/harness contract against real broker behavior. | Evidence follows `reset -> seed -> capture -> mutate -> start -> assert -> report`. |
+| G-historical-complex-benchmark | Re-run one historical complex pattern. | Gives confidence that the skill handles the original class of work. | Output is decision-grade and clearly separates proven, falsified, untested, and uncertain claims. |
+
+## Setup: Static Validation In sbx
 
 Create or reuse a sandbox:
 
@@ -82,7 +105,7 @@ First passing tracker smoke:
 - Behavior: created tracker, investigation brief, and reference architecture only; captured known KRaft and reduced-broker facts; asked four focused intake questions; did not research docs/source or build scenarios/harnesses.
 - Harness finding: the summary TSV writer needed one extra field after adding `known_facts_captured`; fixed after this run.
 
-## Phase 1: Trigger And Tracker-First Smoke
+## Phase A: Repeat Cheap Smokes
 
 Runner:
 
@@ -110,7 +133,42 @@ Expected:
 - Asks at least one and no more than five focused questions.
 - Does not clone Kafka, browse docs, create Compose files, or write scenarios.
 
-## Phase 2: Intake Loop Quality
+Repeat the smoke until there is enough confidence that failures are not one-off model variance. A useful target is three clean passes after the latest skill/harness change, not counting runs that exposed a bug subsequently fixed.
+
+## Phase B: Prompt Variants
+
+Runner:
+
+```bash
+evaluation/kafka-architecture-investigation/run-phase-b-variant.sh cluster-linking --sync-host-codex-auth
+evaluation/kafka-architecture-investigation/run-phase-b-variant.sh transactions --sync-host-codex-auth
+evaluation/kafka-architecture-investigation/run-phase-b-variant.sh backup-tool --sync-host-codex-auth
+evaluation/kafka-architecture-investigation/run-phase-b-variant.sh vague --sync-host-codex-auth
+```
+
+Expected:
+
+- Skill triggers for different Kafka architecture investigation shapes.
+- Captures the facts already present in the prompt.
+- Keeps unknowns explicit instead of inventing source estate or target state.
+- Asks 1-5 focused intake questions.
+- Does not research docs/source, write ADRs/scenarios/specs, or create harness files.
+
+## Phase C: Resume Intake Loop
+
+Runner:
+
+```bash
+evaluation/kafka-architecture-investigation/run-phase-c-resume.sh \
+  --sync-host-codex-auth \
+  --model gpt-5.4-mini \
+  --effort low
+```
+
+Cases:
+
+- `partial-s01`: existing source/target facts are preserved, S01 stays `in_progress`, and the agent asks 1-5 missing intake questions.
+- `ready-s01`: complete S01 facts are already present, so the agent marks S01 `done`, moves the cursor to S02, and stops before source research.
 
 Prompt starts from a workspace with S01 incomplete and partial user answers.
 
@@ -120,8 +178,15 @@ Expected:
 - Records unknowns as assumptions only when safe.
 - Continues asking 1-5 focused questions if the research-ready gate is still blocked.
 - Marks S01 done only when source estate, target state, acceptability boundaries, constraints, evidence needs, and tracks are present or explicitly assumed.
+- For step transitions, uses the deterministic tracker updater so Current Cursor keeps the full destination `Read Now` list.
 
-## Phase 3: Research-Ready Resume
+## Phase D: ADR And Scenario/Spec Without Kafka
+
+This phase should be split into cheap document-only cases before any Kafka/Docker work:
+
+1. `S02-source-research`: prompt starts from S01 done and S02 pending.
+2. `S03-adr-gate`: prompt starts from S02 done and S03 pending.
+3. `S04-scenario-spec`: prompt starts from S03 done and S04 pending.
 
 Prompt starts from a workspace with S01 done and S02 pending.
 
@@ -133,8 +198,6 @@ Expected:
 - Does not expand scenarios or build harness.
 - If a missing policy fact appears, returns to user synchronization instead of guessing.
 
-## Phase 4: ADR Gate
-
 Prompt starts from S02 done and S03 pending.
 
 Expected:
@@ -142,8 +205,6 @@ Expected:
 - Writes `ADR.md`.
 - Combines user context, source claims, options, decision, consequences, and light scenario coverage.
 - Does not write detailed scenario specs until the ADR completion gate is satisfied.
-
-## Phase 5: Scenario And Spec Expansion
 
 Prompt starts from S03 done and S04 pending.
 
@@ -153,7 +214,7 @@ Expected:
 - Writes `IMPLEMENTATION_SPEC.md` with small ordered steps and validation gates.
 - Every implemented scenario has deterministic construction or is explicitly `nondeterministic`.
 
-## Phase 6: Autonomous Loop Probe
+## Phase E: Toy Autonomous Loop
 
 Prompt starts from S04 done with a toy implementation spec that can be completed without Kafka.
 
@@ -164,9 +225,9 @@ Expected:
 - Stops only when all steps are done or a real stop condition is recorded.
 - Updates `TRACKER.md` after each loop pass.
 
-## Phase 7: Small Kafka Golden Path
+## Phase F: Small Kafka Golden Path
 
-Only after phases 1-6 pass, run a small Kafka-like or real Kafka task:
+Only after phases A-E pass, run a small Kafka-like or real Kafka task:
 
 - A tiny local KRaft lab.
 - One baseline scenario.
@@ -178,7 +239,7 @@ Expected:
 - `reset -> seed -> capture -> mutate -> start -> assert -> report` shape.
 - Evidence recorded under `artifacts/kafka-architecture-investigation/`.
 
-## Phase 8: Real-Pattern Benchmark
+## Phase G: Historical Complex Benchmark
 
 Use one of the historical patterns as an expensive benchmark only after cheap tests pass:
 

@@ -18,7 +18,7 @@ This skill is not a general "make me a Kafka lab" workflow. If the available ski
 - Use the opinionated file layout below. Do not invent alternate names or scatter investigation state across the repo unless the user explicitly requests it.
 - After reading this `SKILL.md`, bootstrap or read `TRACKER.md` before reading any project investigation file or skill reference.
 - Resume from the earliest non-`done` row in the tracker checklist. Read only the files and references named by that row.
-- When updating `TRACKER.md`, keep the Current Cursor aligned with the active checklist row. Do not remove `Read now` entries from the cursor just because they were read during the current turn.
+- When updating `TRACKER.md`, keep the Current Cursor aligned with the active checklist row. Copy the full `Read Now` and `Write/Update` file lists from the destination checklist row; do not shorten them to only the files you used this turn.
 - Start with an interactive synchronization loop. Ask at least one question when the research-ready gate is blocked, and ask no more than five focused questions in one turn.
 - During `S01-user-sync`, record any facts already supplied by the user in `INVESTIGATION_BRIEF.md` and `REFERENCE_ARCHITECTURE.md` before asking the next question batch. Ask only for the missing facts needed by the research-ready gate.
 - After intake and source research are sufficient, drive the work yourself: ADR, scenario/spec, harness, execution, and report. Stop only for missing user facts, destructive actions, unclear policy tradeoffs, or external blockers.
@@ -63,6 +63,16 @@ Create `TRACKER.md` first by copying the bundled template. Create the other file
 
 Use `TRACKER.md` as the only always-read investigation file.
 
+Tracker transitions are low-freedom. When changing checklist statuses or moving the Current Cursor to another step, use the bundled updater instead of hand-editing the cursor:
+
+```bash
+python3 <skill-dir>/scripts/update-tracker-state.py . \
+  --step-status S01-user-sync=done \
+  --step-status S02-source-research=pending \
+  --cursor S02-source-research \
+  --cursor-status pending
+```
+
 1. After this skill loads, check for `docs/kafka-architecture-investigation/TRACKER.md`.
 2. If it is missing, run the bundled bootstrap script from the project root. For S01 use:
    ```bash
@@ -74,8 +84,8 @@ Use `TRACKER.md` as the only always-read investigation file.
 4. Find the earliest checklist row whose status is not `done`.
 5. If a listed investigation file is missing, create it from the matching template before reading it.
 6. Read only the files and skill references listed in that row's `Read Now` column.
-7. Do the work for that step, update the durable files named in `Write/Update`, then update `TRACKER.md` before moving on.
-8. When updating `TRACKER.md`, ensure `Current Cursor` still mirrors the earliest non-`done` checklist row, including the complete `Read now` list.
+7. Do the work for that step, update the durable files named in `Write/Update`, then update `TRACKER.md` before moving on. Use `update-tracker-state.py` for status/cursor changes.
+8. When updating `TRACKER.md`, ensure `Current Cursor` still mirrors the earliest non-`done` checklist row, including the complete `Read now` and `Write/update` lists. If advancing to a new row, copy every file/reference from that row, including files that do not exist yet or will only be created in the next turn.
 
 Do not read all references, templates, or investigation documents "to get context". The tracker is the context index.
 

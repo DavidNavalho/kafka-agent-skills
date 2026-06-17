@@ -5,7 +5,7 @@
 - After `SKILL.md`, read this tracker first and nothing else.
 - Resume from the earliest checklist row whose status is not `done`.
 - For the active row, read only the files and references listed in `Read Now`.
-- The `Current Cursor` must mirror the active checklist row, including the complete `Read now` list; do not remove references after reading them.
+- The `Current Cursor` must mirror the active checklist row, including the complete `Read now` and `Write/update` file lists; do not remove references after reading them or omit files just because they are created in a later turn.
 - If a `Read Now` investigation file is missing, create it from `assets/templates/` before reading it.
 - Do not read all references, templates, or investigation docs for general context.
 - Keep this tracker concise. Put detailed reasoning in the files named by `Write/Update`.
@@ -15,6 +15,8 @@
 ## Current Cursor
 
 This section mirrors the earliest non-`done` checklist row. If it conflicts with the checklist, the checklist wins and this section must be corrected.
+
+When changing active steps, copy the destination checklist row's `Read Now` and `Write/Update` cells completely into this cursor. For example, S02's `Read now` includes `SOURCE_RESEARCH.md` even before source research content exists.
 
 - Active step: S01-user-sync
 - Status: in_progress
