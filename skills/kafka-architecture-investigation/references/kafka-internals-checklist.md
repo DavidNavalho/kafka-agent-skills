@@ -123,7 +123,7 @@ Questions to answer:
 Use this shape in `SOURCE_RESEARCH.md`:
 
 ```text
-Claim:
+Claim: C1
 Subsystem:
 Version/commit:
 Source/doc path:
@@ -131,3 +131,7 @@ Evidence:
 Implication for scenario design:
 Confidence: docs-only | source-backed | locally-tested | harness-proven
 ```
+
+Use stable claim IDs (`C1`, `C2`, etc.) and preserve supplied claim IDs exactly. These IDs are the bridge into ADR claims and scenario rows.
+
+Use only the listed confidence values. Do not invent extra labels such as `offline-fixture`; if a document-only fixture provides source-path notes without live verification, use `docs-only` and record the limitation in Search Notes.

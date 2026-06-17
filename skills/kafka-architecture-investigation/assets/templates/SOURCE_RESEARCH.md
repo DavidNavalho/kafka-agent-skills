@@ -9,7 +9,7 @@
 
 ## Claims
 
-### Claim 1
+### Claim C1
 
 - Subsystem:
 - Source/doc path:

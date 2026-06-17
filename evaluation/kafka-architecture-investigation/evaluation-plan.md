@@ -188,6 +188,15 @@ This phase should be split into cheap document-only cases before any Kafka/Docke
 2. `S03-adr-gate`: prompt starts from S02 done and S03 pending.
 3. `S04-scenario-spec`: prompt starts from S03 done and S04 pending.
 
+Runner:
+
+```bash
+evaluation/kafka-architecture-investigation/run-phase-d-docs.sh \
+  --sync-host-codex-auth \
+  --model gpt-5.4-mini \
+  --effort low
+```
+
 Prompt starts from a workspace with S01 done and S02 pending.
 
 Expected:
@@ -195,6 +204,7 @@ Expected:
 - Reads only tracker S02 `Read Now` files.
 - Produces `SOURCE_RESEARCH.md`.
 - Uses docs/source research language.
+- Preserves stable claim IDs such as `C1` and uses only allowed confidence values.
 - Does not expand scenarios or build harness.
 - If a missing policy fact appears, returns to user synchronization instead of guessing.
 
@@ -213,6 +223,7 @@ Expected:
 - Writes `SCENARIO_MATRIX.tsv` with objective and ADR claim mappings.
 - Writes `IMPLEMENTATION_SPEC.md` with small ordered steps and validation gates.
 - Every implemented scenario has deterministic construction or is explicitly `nondeterministic`.
+- `SCENARIO_MATRIX.tsv` rows have exactly 13 tab-separated fields, nonempty artifacts and implementation step IDs, and valid status enum values.
 
 ## Phase E: Toy Autonomous Loop
 
