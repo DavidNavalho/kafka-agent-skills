@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state="${MOCK_SBX_STATE:?}"
+log="${MOCK_COMMAND_LOG:?}"
+workspace="${MOCK_WORKSPACE:?}"
+printf 'sbx' >> "$log"
+printf ' %q' "$@" >> "$log"
+printf '\n' >> "$log"
+
+command_name="${1:-}"
+shift || true
+
+write_listing() {
+  python3 - "$state" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+state = Path(sys.argv[1])
+sandboxes = []
+if state.exists():
+    name, workspace = state.read_text(encoding="utf-8").splitlines()[:2]
+    sandboxes.append({
+        "name": name,
+        "id": "mock-id",
+        "agent": os.environ.get("MOCK_LIST_AGENT", "codex"),
+        "status": "running",
+        "workspaces": [workspace],
+    })
+print(json.dumps({"sandboxes": sandboxes}))
+PY
+}
+
+case "$command_name" in
+  version)
+    printf 'sbx version: v0.mock mock-sha\n'
+    ;;
+  create)
+    if [[ "${1:-}" == codex && "${2:-}" == --help ]]; then
+      printf 'Usage: sbx create codex PATH [PATH:ro ...]\n'
+      exit 0
+    fi
+    name=""
+    while (($#)); do
+      case "$1" in
+        --name)
+          name="$2"
+          shift 2
+          ;;
+        --memory|--cpus)
+          shift 2
+          ;;
+        codex)
+          shift
+          break
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    [[ -n "$name" && "${1:-}" == "$workspace" ]]
+    printf '%s\n%s\n' "$name" "$workspace" > "$state"
+    printf 'created %s\n' "$name"
+    ;;
+  ls)
+    write_listing
+    ;;
+  policy)
+    printf 'POLICY SOURCE APPLIES SUMMARY\nmock local all network: allow\n'
+    ;;
+  cp)
+    exit 0
+    ;;
+  stop)
+    exit 0
+    ;;
+  rm)
+    rm -f "$state"
+    printf 'removed\n'
+    ;;
+  exec)
+    while (($#)); do
+      case "$1" in
+        -i|--interactive|-t|--tty)
+          shift
+          ;;
+        -w|--workdir|-e|--env|-u|--user)
+          shift 2
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
+    sandbox="${1:?missing sandbox}"
+    shift
+    [[ -s "$state" ]]
+    joined=" $* "
+
+    if [[ "$joined" == *" codex login status "* ]]; then
+      printf 'Logged in using ChatGPT\n'
+    elif [[ "$joined" == *"auth-baseline"* ]]; then
+      printf '%064d\n' 0
+    elif [[ "$joined" == *"auth-after"* ]]; then
+      if [[ "${MOCK_AUTH_STATE:-unchanged}" == changed ]]; then
+        printf '%064d\n' 1
+      else
+        printf '%064d\n' 0
+      fi
+    elif [[ "$joined" == *"command -v sha256sum"* ]]; then
+      printf 'user=agent\nuid=1000\ncwd=%s\narch=aarch64\nkernel=Linux\n/usr/bin/codex\ncodex-cli 0.mock\n/usr/bin/timeout\ntimeout (mock)\n/usr/bin/sha256sum\n' "$workspace"
+    elif [[ "${1:-}" == test && "${2:-}" == -f ]]; then
+      exit 1
+    elif [[ "$joined" == *" codex exec "* ]]; then
+      prompt="$(cat)"
+      if [[ "${MOCK_AGENT_MODE:-success}" == timeout ]]; then
+        exit 124
+      fi
+      if [[ "${MOCK_AGENT_MODE:-success}" == missing-handoff ]]; then
+        printf '{"type":"turn.completed"}\n'
+        exit 0
+      fi
+      handoff="$(printf '%s\n' "$prompt" | sed -n 's/^- Required handoff: `\([^`]*\)` relative.*/\1/p' | sed -n '1p')"
+      evidence="$(printf '%s\n' "$prompt" | sed -n 's/^- Validation evidence directory: `\([^`]*\)` relative.*/\1/p' | sed -n '1p')"
+      [[ -n "$handoff" && -n "$evidence" ]]
+      mkdir -p "$workspace/$(dirname "$handoff")" "$workspace/$evidence"
+      printf 'mock validation passed\n' > "$workspace/$evidence/mock.txt"
+      python3 - "$workspace/$handoff" "$evidence/mock.txt" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+Path(sys.argv[1]).write_text(json.dumps({
+    "schemaVersion": "1.0",
+    "status": "succeeded",
+    "summary": "Completed the mock bounded task.",
+    "changedFiles": [],
+    "validationEvidence": [sys.argv[2]],
+    "unresolvedRisks": [],
+    "recommendedNextAction": "Review the mock result."
+}) + "\n", encoding="utf-8")
+PY
+      printf '{"type":"turn.completed"}\n'
+    else
+      exit 0
+    fi
+    ;;
+  *)
+    printf 'unsupported mock sbx command: %s\n' "$command_name" >&2
+    exit 2
+    ;;
+esac

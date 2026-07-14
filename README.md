@@ -6,6 +6,12 @@ This repository contains reusable agent skills.
 
 ```text
 skills/
+  run-agents-in-sbx/
+    SKILL.md
+    agents/
+    assets/
+    references/
+    scripts/
   kafka-local-lab/
     SKILL.md
     assets/
@@ -27,6 +33,7 @@ Runtime skill folders stay self-contained under `skills/<skill-name>`. Evaluatio
 
 ## Current Skills
 
+- `run-agents-in-sbx`: run host-controlled Codex implementation lanes inside Docker `sbx` with isolated ChatGPT-subscription auth, one-writer workspaces, bounded noninteractive execution, durable handoffs, evidence capture, and recovery-aware cleanup.
 - `kafka-local-lab`: create and smoke-test local Docker-based Kafka labs, including Apache Kafka, Confluent Kafka, Schema Registry, Kafka Connect, and AKHQ.
 - `kafka-architecture-investigation`: guide source-backed Kafka architecture investigations, ADRs, deterministic scenario design, harness evidence, runbooks, and reports.
 
@@ -36,6 +43,7 @@ For Codex:
 
 ```bash
 mkdir -p "$HOME/.codex/skills"
+cp -R skills/run-agents-in-sbx "$HOME/.codex/skills/"
 cp -R skills/kafka-local-lab "$HOME/.codex/skills/"
 cp -R skills/kafka-architecture-investigation "$HOME/.codex/skills/"
 ```
@@ -44,6 +52,7 @@ For Claude Code:
 
 ```bash
 mkdir -p "$HOME/.claude/skills"
+cp -R skills/run-agents-in-sbx "$HOME/.claude/skills/"
 cp -R skills/kafka-local-lab "$HOME/.claude/skills/"
 cp -R skills/kafka-architecture-investigation "$HOME/.claude/skills/"
 ```

@@ -1,6 +1,13 @@
 # sbx Sandbox Skill Notes
 
-These notes capture patterns for a future generic `sbx` skill. The goal is to isolate code compilation, dependency installation, and agent-driven evaluation from the host machine to reduce supply-chain exposure and keep local developer environments clean.
+> Historical evaluation notes. The canonical reusable workflow now lives in
+> `skills/run-agents-in-sbx/`. Its auth provisioner supersedes the stdin-copy
+> prototype below with the real-sandbox-proven `sbx cp` → guest `sudo chown` →
+> atomic `mv` → `chmod 600` sequence, plus serialized auth use and refresh
+> recovery. Keep this file as evaluation lineage, not current operating
+> instructions.
+
+These notes captured the patterns that informed the generic `sbx` skill. The goal is to isolate code compilation, dependency installation, and agent-driven evaluation from the host machine to reduce supply-chain exposure and keep local developer environments clean.
 
 ## Why Use sbx
 
