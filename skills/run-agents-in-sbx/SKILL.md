@@ -99,6 +99,8 @@ Useful options:
 
 The runner serializes use of a given auth cache and writable workspace. Do not bypass its locks to gain parallelism. Give parallel agents distinct worktrees and, until refreshed-copy reconciliation is implemented, distinct or strictly serialized ChatGPT auth streams.
 
+If the runner reports `ownership-busy`, another live process owns the auth cache or workspace. Wait for that exact owner to finish; do not remove its lock, copy the same auth lineage to evade serialization, or start a competing writer.
+
 ### 5. Validate completion
 
 Require all of these before calling the task complete:

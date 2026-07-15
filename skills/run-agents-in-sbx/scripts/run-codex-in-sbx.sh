@@ -42,7 +42,7 @@ Options:
   -h, --help               Show this help.
 
 Exit codes:
-  0 success; 20 preflight; 21 create; 22 boundary/policy; 23 auth;
+  0 success; 20 preflight; 21 create; 22 boundary/ownership/policy; 23 auth;
   24 timeout/cancel; 25 agent failure; 26 invalid handoff; 27 auth refresh
   recovery required; 28 cleanup failure; 29 partial/blocked agent outcome.
 USAGE
@@ -401,6 +401,7 @@ auth_provisioned=0
 host_deadline_reached=0
 result_written=0
 lock_dirs=()
+lock_error=""
 
 lock_key() {
   printf '%s' "$1" | cksum | awk '{print $1}'
@@ -418,11 +419,18 @@ acquire_lock() {
       owner="$(sed -n '1p' "$lock_dir/pid" 2>/dev/null || true)"
     fi
     if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
-      die "$kind is already owned by live runner pid=$owner"
+      lock_error="$kind is already owned by live runner pid=$owner"
+      return 1
     fi
     rm -f "$lock_dir/pid" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || die "stale $kind lock needs inspection: $lock_dir"
-    mkdir "$lock_dir" || die "could not acquire $kind lock"
+    if ! rmdir "$lock_dir" 2>/dev/null; then
+      lock_error="stale $kind lock needs inspection: $lock_dir"
+      return 1
+    fi
+    if ! mkdir "$lock_dir"; then
+      lock_error="could not acquire $kind lock"
+      return 1
+    fi
   fi
   printf '%s\n' "$$" > "$lock_dir/pid"
   lock_dirs+=("$lock_dir")
@@ -656,8 +664,16 @@ if ! "$PREFLIGHT" --workspace "$workspace" --auth-file "$auth_file" \
   finish 20
 fi
 
-acquire_lock auth "$auth_file"
-acquire_lock workspace "$workspace"
+if ! acquire_lock auth "$auth_file"; then
+  outcome=ownership-busy
+  printf '%s\n' "$lock_error" > "$artifacts/lock-error.txt"
+  finish 22
+fi
+if ! acquire_lock workspace "$workspace"; then
+  outcome=ownership-busy
+  printf '%s\n' "$lock_error" > "$artifacts/lock-error.txt"
+  finish 22
+fi
 
 if sandbox_present; then
   presence=0

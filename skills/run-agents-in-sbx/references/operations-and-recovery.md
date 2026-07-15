@@ -15,6 +15,7 @@ sandbox.json
 network-policy.txt
 runtime.txt
 auth-provision.txt
+lock-error.txt
 invocation.txt
 events.jsonl
 stderr.txt
@@ -69,6 +70,7 @@ The handoff is a claim with evidence pointers, not independent proof. The host v
 | `succeeded` | Exec zero, valid handoff, unchanged guest auth, cleanup succeeded | Verify workspace, then continue workflow. |
 | `preflight-failed` | Tool, auth, workspace, or daemon prerequisite failed | No sandbox created; fix the named prerequisite. |
 | `sandbox-create-failed` | `sbx create` failed | Preserve workspace; if error `-50` occurred under Codex/Seatbelt, use host controller. |
+| `ownership-busy` | The auth cache or writable workspace is owned by another live runner | Wait for that exact owner to finish; do not remove its lock or start a competing writer. |
 | `boundary-unavailable` | Created identity, exact workspace, runtime, or listing could not be verified | Stop and preserve any created sandbox; do not run Codex. |
 | `policy-unavailable` | Effective network policy could not be recorded | Do not run the agent; repair policy visibility. |
 | `auth-provision-failed` | Copy, ownership repair, or ChatGPT-mode check failed | Remove disposable guest cache or owned sandbox; never logout. |

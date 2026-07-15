@@ -1,92 +1,34 @@
 # Agent Skills
 
-This repository contains reusable agent skills.
+Reusable skills for Codex and other agents that support the `SKILL.md` format.
 
-## Layout
+## Skills
 
-```text
-skills/
-  run-agents-in-sbx/
-    SKILL.md
-    agents/
-    assets/
-    references/
-    scripts/
-  kafka-local-lab/
-    SKILL.md
-    assets/
-    references/
-    scripts/
-  kafka-architecture-investigation/
-    SKILL.md
-    agents/
-    assets/
-    references/
-evaluation/
-  kafka-local-lab/
-    run-model-matrix.sh
-    evaluation-plan.md
-    evaluation-results.md
-```
+| Skill | Use it for |
+| --- | --- |
+| [`run-agents-in-sbx`](skills/run-agents-in-sbx/SKILL.md) | Run Codex implementation tasks inside Docker `sbx` with one-writer workspaces, copied ChatGPT-subscription auth, hard timeouts, validated handoffs, and explicit recovery. Use the authenticated mode only with trusted private code. |
+| [`kafka-local-lab`](skills/kafka-local-lab/SKILL.md) | Create and smoke-test disposable Docker Compose Kafka labs, from a minimal Apache Kafka setup to Confluent services, Schema Registry, Kafka Connect, and AKHQ. |
+| [`kafka-architecture-investigation`](skills/kafka-architecture-investigation/SKILL.md) | Turn Kafka architecture questions into source-backed ADRs, deterministic scenarios, local proof harnesses, evidence, reports, and runbooks. |
 
-Runtime skill folders stay self-contained under `skills/<skill-name>`. Evaluation tooling and generated results live outside the skill so published skills do not carry test harness noise.
+## Install
 
-## Current Skills
-
-- `run-agents-in-sbx`: run host-controlled Codex implementation lanes inside Docker `sbx` with isolated ChatGPT-subscription auth, one-writer workspaces, bounded noninteractive execution, durable handoffs, evidence capture, and recovery-aware cleanup.
-- `kafka-local-lab`: create and smoke-test local Docker-based Kafka labs, including Apache Kafka, Confluent Kafka, Schema Registry, Kafka Connect, and AKHQ.
-- `kafka-architecture-investigation`: guide source-backed Kafka architecture investigations, ADRs, deterministic scenario design, harness evidence, runbooks, and reports.
-
-## Install Locally
-
-For Codex:
+Choose a skill and copy its complete directory into your agent's skill directory:
 
 ```bash
+skill=run-agents-in-sbx
+
 mkdir -p "$HOME/.codex/skills"
-cp -R skills/run-agents-in-sbx "$HOME/.codex/skills/"
-cp -R skills/kafka-local-lab "$HOME/.codex/skills/"
-cp -R skills/kafka-architecture-investigation "$HOME/.codex/skills/"
+cp -R "skills/$skill" "$HOME/.codex/skills/"
 ```
 
-For Claude Code:
+For Claude Code, use `$HOME/.claude/skills/` instead. Install only the skills you want available to the agent.
 
-```bash
-mkdir -p "$HOME/.claude/skills"
-cp -R skills/run-agents-in-sbx "$HOME/.claude/skills/"
-cp -R skills/kafka-local-lab "$HOME/.claude/skills/"
-cp -R skills/kafka-architecture-investigation "$HOME/.claude/skills/"
-```
+## Testing
 
-## Evaluate
+See [TESTING.md](TESTING.md) for each skill's evaluation method, latest recorded result, known coverage gaps, and links to the detailed harnesses and evidence.
 
-From the repository root:
-
-```bash
-mkdir -p /tmp/agent-skills-eval
-sbx create \
-  --name agent-skills-eval \
-  --memory 8g \
-  --cpus 4 \
-  codex \
-  /tmp/agent-skills-eval \
-  "$(pwd):ro"
-```
-
-```bash
-evaluation/kafka-local-lab/run-model-matrix.sh \
-  --runner codex \
-  --scenarios "default full" \
-  --models "gpt-5.4-mini" \
-  --efforts "low"
-```
-
-The generated `evaluation-runs/` directories are intentionally ignored.
+Runtime skill files live under `skills/`. Evaluation harnesses and test records live under `evaluation/`; generated transcripts and run artifacts are ignored.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Publishing Checklist
-
-- Decide whether to publish evaluation summaries only, or also selected redacted transcripts.
-- Run `evaluation/kafka-local-lab/run-model-matrix.sh` for the release baseline.
