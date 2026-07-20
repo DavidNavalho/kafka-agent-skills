@@ -1,5 +1,33 @@
 # run-agents-in-sbx Evaluation Results
 
+## Fresh-context low-effort release matrix
+
+Date: 2026-07-20
+
+The release matrix ran three fresh sessions per model at explicitly low reasoning effort. All nine runner invocations succeeded, retained an unchanged guest auth cache, produced valid handoffs, passed the final semantic scorer, and removed their exact owned sandbox.
+
+| Model | Effort | Final semantic result | Runner/auth/cleanup |
+| --- | --- | --- | --- |
+| `gpt-5.6-sol` | low | 3/3 passed | 3/3 passed |
+| `gpt-5.5` | low | 3/3 passed | 3/3 passed |
+| `gpt-5.3-codex-spark` | low | 3/3 passed | 3/3 passed |
+
+Environment and candidate:
+
+- `sbx v0.35.0` (`01e01520456e4126a9653471e7072e4d9b280321`)
+- host `codex-cli 0.144.5`
+- guest `codex-cli 0.145.0-alpha.13`, installed before auth copy
+- generated trusted git repositories only
+- file-backed ChatGPT subscription auth copied only to `/home/agent/.codex/auth.json`
+- one serial cell at a time with a finite 86,400-second lock-wait bound
+- frozen raw candidate-bundle SHA-256 `681104473767b2d6338f2a4c9c8bd31e14723465a30aede473324b3c49883f03`
+
+The raw run summary was 8/9 because the third Spark plan omitted `codex-logout` from a redundant `forbiddenActions` summary array. Its typed recovery object independently set `codexLogout` to `false`, selected stop-and-preserve/manual reconciliation, and explicitly said not to log out automatically. The host-only scorer was corrected to keep the typed safety checks strict without requiring every decision to be repeated in the summary array. No agent-facing skill, runner, request, schema, or model output changed; rescoring the frozen nine-output corpus with the committed scorer produced 9/9. The raw failure is retained rather than rewritten.
+
+Every final score scanned 55 generated workspace/artifact files against the copied credential material and found no match. Actual lock waits ranged from 0 to 5,318 seconds while other legitimate local runs used the same auth lineage. The harness waited or stopped according to ownership evidence and never bypassed another owner's lock. This demonstrates bounded serialization under observed contention, not FIFO fairness.
+
+See the [redacted per-cell baseline](baselines/fresh-context-low-effort-20260720.md) for the exact command, results, evaluator calibration, findings, and limits. Raw prompts, model output, and runner artifacts remain local under the ignored `evaluation-runs/` directory because they can contain account or workspace metadata.
+
 ## Authenticated live boundary evaluation
 
 Date: 2026-07-15
@@ -61,12 +89,19 @@ A subsequent repetition attempt encountered another legitimate runner using the 
 - raw malformed-handoff preservation with mode `0600`;
 - sandbox agent/workspace identity mismatch;
 - live auth-lock contention reported as typed `ownership-busy` without creating a sandbox;
+- bounded waiting behind a live owner and exact-owner lock release;
+- preservation of ambiguous stale lock metadata;
 - successful lifecycle and credential-copy command shape;
+- exact guest auth destination and rejection of shared writable workspaces;
+- guest Codex installation before auth copy;
 - guest auth refresh requiring preserved-sandbox recovery;
+- changed-auth recovery that forbids automatic logout or host-auth overwrite;
 - agent timeout requiring preserved-sandbox recovery;
 - missing handoff remaining incomplete despite agent exit zero;
 - cleanup verification; and
-- live-boundary scorer behavior without real credentials.
+- live-boundary and fresh-context scorer behavior without real credentials;
+- immutable/read-only candidate snapshotting; and
+- a complete credential-free mocked fresh-context matrix.
 
 ## Fresh-context evaluation
 
@@ -83,3 +118,5 @@ The following branches are deterministic/mock-tested but were not induced with a
 - attempts to bypass serialization with another copy of the same auth lineage.
 
 The live harness supports `--repetitions` for future drift and race checks. Rerun both postures after material `sbx` or Codex CLI changes.
+
+The fresh-context evidence is also intentionally bounded: it samples three named models on one date, only at low effort, and has no no-skill ablation. It supports consistency across those nine cells, not the claim that every current or future model will behave identically. The observed permissive network policy also does not prove egress restriction.

@@ -14,6 +14,19 @@ Run an agent as a host-controlled lifecycle, not as an ad hoc command. Keep the 
 - Support two Codex postures: `outer` for a fully externally sandboxed run and `workspace-write` for defense in depth.
 - Do not claim support for Claude subscription, Claude API, OpenAI API-key auth, Codex access tokens, or native `sbx secret set -g openai --oauth`. Treat them as future provider strategies.
 
+## Decision invariants
+
+| Decision | Required value |
+| --- | --- |
+| `sbx` lifecycle owner | Unsandboxed host controller, never the guest agent |
+| Writable ownership | One distinct workspace or worktree per agent; never shared writers |
+| Trusted ChatGPT credential | Copy only `auth.json` to guest `/home/agent/.codex/auth.json`; never mount host `CODEX_HOME` |
+| Same auth lineage | Serialize runs; separate initial copies do not make refresh concurrency safe |
+| Unknown or adversarial code | Use a separate credential-free sandbox |
+| Changed or ambiguous guest auth | Stop and preserve; never logout or overwrite host auth; reconcile manually before removal or another launch |
+| Completion | Valid run-specific handoff plus independent host verification |
+| Cleanup | Collect evidence, then remove only the exact owned sandbox |
+
 ## Non-negotiable boundaries
 
 1. Drive `sbx` from a host controller. If `sbx create` fails with authentication error `-50` from inside another Codex/Seatbelt sandbox, stop and move the lifecycle to an unsandboxed host process.
@@ -92,14 +105,16 @@ Useful options:
 
 - `--read-only-mount PATH` for extra context without another writable surface.
 - `--artifacts PATH` for durable logs outside the default temporary root.
+- `--guest-codex-version VERSION` when the sandbox template's Codex CLI cannot support the selected model; installation occurs and is recorded before credentials cross the boundary.
 - `--model MODEL` and `--reasoning-effort EFFORT` when the task fixes them.
 - `--posture outer` only because this runner creates and verifies the outer sandbox; use `workspace-write` when retaining Codex's inner sandbox is preferable.
+- `--auth-lock-wait SECONDS` to wait for a live owner without weakening serialization; keep the bound explicit and use `0` to fail immediately.
 - `--keep-sandbox` only for deliberate diagnosis. The workspace is preserved regardless.
 - `--allow-protected-branch` or `--allow-non-git` only after confirming that the exception matches the task.
 
 The runner serializes use of a given auth cache and writable workspace. Do not bypass its locks to gain parallelism. Give parallel agents distinct worktrees and, until refreshed-copy reconciliation is implemented, distinct or strictly serialized ChatGPT auth streams.
 
-If the runner reports `ownership-busy`, another live process owns the auth cache or workspace. Wait for that exact owner to finish; do not remove its lock, copy the same auth lineage to evade serialization, or start a competing writer.
+If the runner reports `ownership-busy`, another live process owns the auth cache or workspace, the bounded auth wait expired, or lock metadata needs inspection. Wait for that exact owner to finish or rerun with a justified `--auth-lock-wait`; do not remove its lock, copy the same auth lineage to evade serialization, or start a competing writer.
 
 ### 5. Validate completion
 

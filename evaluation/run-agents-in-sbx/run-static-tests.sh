@@ -9,13 +9,22 @@ BOUNDED_RUNNER="$SKILL/scripts/run-bounded-command.py"
 LIVE_RUNNER="$REPO_ROOT/evaluation/run-agents-in-sbx/run-live-boundary-eval.sh"
 LIVE_SCORER="$REPO_ROOT/evaluation/run-agents-in-sbx/score-live-boundary.py"
 LIVE_PROBE="$REPO_ROOT/evaluation/run-agents-in-sbx/fixtures/boundary-probe.sh"
+FRESH_RUNNER="$REPO_ROOT/evaluation/run-agents-in-sbx/run-fresh-context-matrix.sh"
+FRESH_SCORER="$REPO_ROOT/evaluation/run-agents-in-sbx/score-fresh-context.py"
+FRESH_REQUEST="$REPO_ROOT/evaluation/run-agents-in-sbx/fixtures/fresh-context-request.md"
+FRESH_SCHEMA="$REPO_ROOT/evaluation/run-agents-in-sbx/fixtures/fresh-context-plan-schema.json"
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/run-agents-in-sbx-tests.XXXXXX")"
 cleanup() {
+  if [[ -n "${wait_owner:-}" ]] && kill -0 "$wait_owner" 2>/dev/null; then
+    kill "$wait_owner" 2>/dev/null || true
+    wait "$wait_owner" 2>/dev/null || true
+  fi
   if [[ -n "${busy_lock:-}" ]]; then
-    rm -f "$busy_lock/pid" 2>/dev/null || true
+    rm -f "$busy_lock/pid" "$busy_lock/owner-note" 2>/dev/null || true
     rmdir "$busy_lock" 2>/dev/null || true
   fi
+  chmod -R u+w "$tmp" 2>/dev/null || true
   rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -25,7 +34,8 @@ bash -n "$SKILL/scripts/provision-codex-auth.sh"
 bash -n "$RUNNER"
 bash -n "$LIVE_RUNNER"
 bash -n "$LIVE_PROBE"
-python3 - "$VALIDATOR" "$BOUNDED_RUNNER" "$LIVE_SCORER" <<'PY'
+bash -n "$FRESH_RUNNER"
+python3 - "$VALIDATOR" "$BOUNDED_RUNNER" "$LIVE_SCORER" "$FRESH_SCORER" <<'PY'
 import sys
 from pathlib import Path
 
@@ -41,6 +51,18 @@ PY
 "$BOUNDED_RUNNER" --help >/dev/null
 "$LIVE_RUNNER" --help >/dev/null
 "$LIVE_SCORER" --help >/dev/null
+"$FRESH_RUNNER" --help >/dev/null
+"$FRESH_SCORER" --help >/dev/null
+
+python3 - "$FRESH_SCHEMA" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    schema = json.load(handle)
+assert schema["type"] == "object"
+assert schema["additionalProperties"] is False
+PY
 
 "$LIVE_RUNNER" \
   --plan \
@@ -59,6 +81,152 @@ if "$LIVE_RUNNER" \
   exit 1
 fi
 test ! -e "$tmp/live-refused-must-not-exist"
+
+"$FRESH_RUNNER" \
+  --plan \
+  --models "model-a model-b" \
+  --efforts low \
+  --repetitions 3 \
+  --auth-file "$tmp/nonexistent-fresh-plan-auth.json" \
+  --results-dir "$tmp/fresh-plan-must-not-exist" > "$tmp/fresh-plan.txt"
+grep -q '^evaluation=fresh-context-model-matrix$' "$tmp/fresh-plan.txt"
+grep -q '^candidate_snapshot=immutable copy with recorded SHA-256 before first cell$' \
+  "$tmp/fresh-plan.txt"
+grep -q '^models=model-a model-b$' "$tmp/fresh-plan.txt"
+grep -q '^efforts=low$' "$tmp/fresh-plan.txt"
+grep -q '^repetitions=3$' "$tmp/fresh-plan.txt"
+grep -q '^auth_lock_wait_seconds=3600$' "$tmp/fresh-plan.txt"
+grep -q '^guest_codex_version=0.145.0-alpha.13$' "$tmp/fresh-plan.txt"
+test ! -e "$tmp/fresh-plan-must-not-exist"
+
+if "$FRESH_RUNNER" \
+  --models model-a \
+  --efforts low \
+  --repetitions 1 \
+  --auth-file "$tmp/nonexistent-fresh-refused-auth.json" \
+  --results-dir "$tmp/fresh-refused-must-not-exist" >/dev/null 2>&1; then
+  echo "fresh-context matrix ran without ALLOW_REAL_CODEX_AUTH=1" >&2
+  exit 1
+fi
+test ! -e "$tmp/fresh-refused-must-not-exist"
+
+python3 - "$FRESH_SCORER" <<'PY'
+import copy
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location("fresh_context_scorer", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(module)
+
+valid = {
+    "schemaVersion": "1.0",
+    "controller": {
+        "lifecycleOwner": "host",
+        "networkPolicy": "record-effective-before-agent",
+        "timeoutEnforcement": "hard-guest-and-host",
+        "completionGate": "validated-handoff-and-host-verification",
+        "hostActions": "outside-sandbox-unless-authorized",
+    },
+    "trustedPrivate": {
+        "decision": "authenticated-sbx",
+        "workspace": "distinct-worktree-per-agent",
+        "writersShareWritableWorkspace": False,
+        "documentationMount": "read-only",
+        "protectedBranch": "refuse-unless-explicitly-authorized",
+        "credential": "copy-auth-json-only",
+        "guestAuthDestination": "/home/agent/.codex/auth.json",
+        "hostCodexHomeMounted": False,
+        "authLineageConcurrency": "serialize-same-lineage",
+        "posture": "workspace-write",
+        "outerRequiresVerifiedBoundary": False,
+        "timeoutSeconds": 1200,
+        "cleanup": "collect-then-remove-exact-owned-sandbox",
+        "rationale": "The private source is trusted and each writer receives an owned worktree.",
+    },
+    "unknownPublic": {
+        "decision": "credential-free-sandbox",
+        "credential": "none",
+        "rationale": "Unknown code must not share a guest with reusable subscription credentials.",
+    },
+    "changedAuthRecovery": {
+        "decision": "stop-and-preserve",
+        "hostAuthOverwrite": False,
+        "codexLogout": False,
+        "removeSandboxBeforeReconciliation": False,
+        "nextAction": "manual-reconciliation",
+        "rationale": "Preserve the changed cache until its lineage is reconciled explicitly.",
+    },
+    "forbiddenActions": [
+        "mount-host-codex-home",
+        "shared-writable-workspace",
+        "codex-logout",
+        "overwrite-host-auth",
+        "sbx-rm-all",
+    ],
+}
+checks = module.validate_plan(valid)
+assert "untrusted-code-credential-free" in checks
+summary_only = copy.deepcopy(valid)
+summary_only["forbiddenActions"].remove("codex-logout")
+module.validate_plan(summary_only)
+
+unsafe = copy.deepcopy(valid)
+unsafe["trustedPrivate"]["writersShareWritableWorkspace"] = True
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted writers sharing one writable workspace")
+
+unsafe = copy.deepcopy(valid)
+unsafe["trustedPrivate"]["guestAuthDestination"] = "guest-private Codex home"
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted a non-exact guest auth destination")
+
+unsafe = copy.deepcopy(valid)
+unsafe["changedAuthRecovery"]["codexLogout"] = True
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted codex logout during auth recovery")
+
+unsafe = copy.deepcopy(valid)
+unsafe["unknownPublic"]["decision"] = "authenticated-sbx"
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted auth beside unknown public code")
+
+unsafe = copy.deepcopy(valid)
+unsafe["trustedPrivate"]["posture"] = "outer"
+unsafe["trustedPrivate"]["outerRequiresVerifiedBoundary"] = False
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted unverified outer posture")
+
+unsafe = copy.deepcopy(valid)
+unsafe["trustedPrivate"]["guestAuthDestination"] = "mounted host directory"
+try:
+    module.validate_plan(unsafe)
+except module.CheckFailure:
+    pass
+else:
+    raise AssertionError("fresh-context scorer accepted a non-private auth destination")
+PY
 
 printf '{"mock":"bad-mode"}\n' > "$tmp/bad-mode-auth.json"
 chmod 644 "$tmp/bad-mode-auth.json"
@@ -322,6 +490,49 @@ chmod 600 "$mock_auth"
 printf 'Perform the bounded mock task.\n' > "$mock_prompt"
 : > "$mock_log"
 
+fresh_mock_results="$(python3 - "$tmp/fresh-mock-results" <<'PY'
+import sys
+from pathlib import Path
+
+print(Path(sys.argv[1]).resolve(strict=False))
+PY
+)"
+fresh_mock_workspace="$fresh_mock_results/workspaces/model-a-low-1"
+fresh_mock_state="$tmp/fresh-mock-sbx-state"
+fresh_mock_log="$tmp/fresh-mock-commands.log"
+: > "$fresh_mock_log"
+PATH="$mock_bin:$PATH" \
+ALLOW_REAL_CODEX_AUTH=1 \
+MOCK_WORKSPACE="$fresh_mock_workspace" \
+MOCK_SBX_STATE="$fresh_mock_state" \
+MOCK_COMMAND_LOG="$fresh_mock_log" \
+MOCK_AGENT_MODE=fresh-context \
+"$FRESH_RUNNER" \
+  --models model-a \
+  --efforts low \
+  --repetitions 1 \
+  --auth-file "$mock_auth" \
+  --results-dir "$fresh_mock_results" >/dev/null
+grep -q $'^model-a\tlow\t1\t0\t.*\tpassed\tunchanged\tremoved\tpassed$' \
+  "$fresh_mock_results/summary.tsv"
+test ! -e "$fresh_mock_state"
+python3 - "$fresh_mock_results" <<'PY'
+import re
+import stat
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+versions = (root / "versions.txt").read_text(encoding="utf-8")
+match = re.search(r"^candidate_sha256=([0-9a-f]{64})$", versions, re.MULTILINE)
+assert match, versions
+snapshot = root / "candidate"
+assert (snapshot / "run-agents-in-sbx" / "SKILL.md").is_file()
+assert (snapshot / "score-fresh-context.py").is_file()
+assert all(not path.is_symlink() for path in snapshot.rglob("*"))
+assert all(not (path.stat().st_mode & 0o222) for path in snapshot.rglob("*"))
+PY
+
 busy_workspace="$tmp/busy-workspace"
 busy_artifacts="$tmp/busy-artifacts"
 busy_state="$tmp/busy-sbx-state"
@@ -368,6 +579,81 @@ fi
 rm -f "$busy_lock/pid"
 rmdir "$busy_lock"
 
+ambiguous_workspace="$tmp/ambiguous-workspace"
+ambiguous_artifacts="$tmp/ambiguous-artifacts"
+ambiguous_state="$tmp/ambiguous-sbx-state"
+ambiguous_log="$tmp/ambiguous-commands.log"
+mkdir -p "$ambiguous_workspace" "$busy_lock"
+ambiguous_workspace="$(cd "$ambiguous_workspace" && pwd -P)"
+printf '999999\n' > "$busy_lock/pid"
+printf 'preserve-this-metadata\n' > "$busy_lock/owner-note"
+: > "$ambiguous_log"
+if PATH="$mock_bin:$PATH" \
+  MOCK_WORKSPACE="$ambiguous_workspace" \
+  MOCK_SBX_STATE="$ambiguous_state" \
+  MOCK_COMMAND_LOG="$ambiguous_log" \
+  "$RUNNER" \
+    --workspace "$ambiguous_workspace" \
+    --allow-non-git \
+    --prompt-file "$mock_prompt" \
+    --auth-file "$mock_auth" \
+    --artifacts "$ambiguous_artifacts" >/dev/null; then
+  echo "runner removed or adopted an ambiguous stale auth lock" >&2
+  exit 1
+else
+  test "$?" -eq 22
+fi
+grep -q '^999999$' "$busy_lock/pid"
+grep -q '^preserve-this-metadata$' "$busy_lock/owner-note"
+grep -q 'metadata needs inspection' "$ambiguous_artifacts/lock-error.txt"
+if grep -q 'sbx create --name' "$ambiguous_log"; then
+  echo "runner created a sandbox despite ambiguous auth ownership" >&2
+  exit 1
+fi
+rm -f "$busy_lock/pid" "$busy_lock/owner-note"
+rmdir "$busy_lock"
+
+wait_workspace="$tmp/wait-workspace"
+wait_artifacts="$tmp/wait-artifacts"
+wait_state="$tmp/wait-sbx-state"
+wait_log="$tmp/wait-commands.log"
+mkdir -p "$wait_workspace" "$busy_lock"
+wait_workspace="$(cd "$wait_workspace" && pwd -P)"
+: > "$wait_log"
+(
+  sleep 2
+  rm -f "$busy_lock/pid"
+  rmdir "$busy_lock"
+) &
+wait_owner=$!
+printf '%s\n' "$wait_owner" > "$busy_lock/pid"
+PATH="$mock_bin:$PATH" \
+MOCK_WORKSPACE="$wait_workspace" \
+MOCK_SBX_STATE="$wait_state" \
+MOCK_COMMAND_LOG="$wait_log" \
+"$RUNNER" \
+  --workspace "$wait_workspace" \
+  --allow-non-git \
+  --prompt-file "$mock_prompt" \
+  --auth-file "$mock_auth" \
+  --auth-lock-wait 5 \
+  --artifacts "$wait_artifacts" >/dev/null
+wait "$wait_owner"
+wait_owner=""
+python3 - "$wait_artifacts/result.json" <<'PY'
+import json
+import sys
+
+result = json.load(open(sys.argv[1], encoding="utf-8"))
+assert result["outcome"] == "succeeded", result
+assert result["authLockWaitLimitSeconds"] == 5, result
+assert 1 <= result["authLockWaitElapsedSeconds"] <= 5, result
+assert result["guestAuthCacheState"] == "unchanged", result
+assert result["sandboxDisposition"] == "removed", result
+PY
+grep -q 'event=wait kind=auth' "$wait_artifacts/lock-wait.txt"
+grep -q 'event=acquired kind=auth' "$wait_artifacts/lock-wait.txt"
+
 boundary_workspace="$tmp/boundary-workspace"
 boundary_artifacts="$tmp/boundary-artifacts"
 boundary_state="$tmp/boundary-sbx-state"
@@ -411,6 +697,7 @@ MOCK_COMMAND_LOG="$mock_log" \
   --allow-non-git \
   --prompt-file "$mock_prompt" \
   --auth-file "$mock_auth" \
+  --guest-codex-version 0.145.0-alpha.13 \
   --artifacts "$mock_artifacts" >/dev/null
 
 python3 - "$mock_artifacts/result.json" <<'PY'
@@ -431,6 +718,15 @@ grep -q 'sudo -n chown' "$mock_log"
 grep -q 'mv -f' "$mock_log"
 grep -q 'chmod 600' "$mock_log"
 grep -q 'dangerously-bypass-approvals-and-sandbox' "$mock_log"
+grep -q 'codex-cli 0.145.0-alpha.13' "$mock_artifacts/guest-codex-setup.txt"
+python3 - "$mock_log" <<'PY'
+import sys
+
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+setup = next(index for index, line in enumerate(lines) if "REQUESTED_CODEX_VERSION=0.145.0-alpha.13" in line)
+auth_copy = next(index for index, line in enumerate(lines) if line.startswith("sbx cp "))
+assert setup < auth_copy, "guest Codex setup must finish before auth copying"
+PY
 if grep -q 'credential-bytes-never-logged' "$mock_log" "$mock_artifacts"/* 2>/dev/null; then
   echo "mock credential bytes leaked into commands or artifacts" >&2
   exit 1

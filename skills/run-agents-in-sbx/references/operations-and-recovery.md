@@ -9,10 +9,12 @@ The one-shot runner writes a private artifact directory containing, when reachab
 ```text
 preflight.txt
 plan.txt
+lock-wait.txt
 create.stdout.txt
 create.stderr.txt
 sandbox.json
 network-policy.txt
+guest-codex-setup.txt
 runtime.txt
 auth-provision.txt
 lock-error.txt
@@ -35,6 +37,8 @@ An absent file means the lifecycle did not reach that step. `result.json` is the
 `changed`, or `unknown`. The compatibility boolean `guestAuthCacheChanged` is
 true only for a demonstrated change; both `changed` and `unknown` require
 credential recovery before the preserved sandbox is removed.
+
+`authLockWaitLimitSeconds` and `authLockWaitElapsedSeconds` record the requested bounded queue and observed wait. `lock-wait.txt` records acquisition and any live-owner or metadata wait without weakening single-owner access.
 
 ## Handoff contract 1.0
 
@@ -70,7 +74,7 @@ The handoff is a claim with evidence pointers, not independent proof. The host v
 | `succeeded` | Exec zero, valid handoff, unchanged guest auth, cleanup succeeded | Verify workspace, then continue workflow. |
 | `preflight-failed` | Tool, auth, workspace, or daemon prerequisite failed | No sandbox created; fix the named prerequisite. |
 | `sandbox-create-failed` | `sbx create` failed | Preserve workspace; if error `-50` occurred under Codex/Seatbelt, use host controller. |
-| `ownership-busy` | The auth cache or writable workspace is owned by another live runner | Wait for that exact owner to finish; do not remove its lock or start a competing writer. |
+| `ownership-busy` | The auth cache or writable workspace has a live owner, a bounded auth wait expired, or lock metadata is ambiguous | Wait for the exact owner or inspect the named lock; do not remove a live/ambiguous lock or start a competing writer. |
 | `boundary-unavailable` | Created identity, exact workspace, runtime, or listing could not be verified | Stop and preserve any created sandbox; do not run Codex. |
 | `policy-unavailable` | Effective network policy could not be recorded | Do not run the agent; repair policy visibility. |
 | `auth-provision-failed` | Copy, ownership repair, or ChatGPT-mode check failed | Remove disposable guest cache or owned sandbox; never logout. |
@@ -111,9 +115,9 @@ sbx rm --force NAME
 
 Do not delete unknown or merely similarly named sandboxes. Never use `sbx rm --all` in an agent workflow.
 
-### Stale runner lock
+### Runner lock and bounded wait
 
-The runner uses host lock directories keyed by auth-file path and workspace path. It removes a lock automatically only when the recorded process no longer exists. If a live process owns the lock, wait or stop that run; do not delete the lock to create concurrent writers.
+The runner uses host lock directories keyed by auth-file path and workspace path. Use `--auth-lock-wait SECONDS` to queue behind a live auth owner; the runner creates no sandbox and copies no credential while waiting. A zero bound fails immediately. If the recorded process no longer exists, the runner removes only a simple stale PID lock; extra or missing ownership metadata remains an inspection-required refusal. If a live process owns the lock, wait or stop that run; do not delete the lock to create concurrent writers.
 
 ### Dirty or ambiguous workspace
 

@@ -31,9 +31,13 @@ Options:
   --timeout SECONDS        Hard in-guest timeout. Default: 1800.
   --memory SIZE            sbx memory limit. Default: 8g.
   --cpus COUNT             sbx CPU count. Default: 4.
+  --guest-codex-version V  Install exact @openai/codex version in the guest
+                           before credentials cross the boundary.
   --model MODEL            Explicit Codex model override.
   --reasoning-effort VALUE Explicit model_reasoning_effort override.
   --posture MODE           outer or workspace-write. Default: outer.
+  --auth-lock-wait SECONDS Wait up to this long for the shared auth lock while
+                           preserving single-owner access. Default: 0 (fail).
   --keep-sandbox           Stop and preserve the sandbox after collection.
   --allow-protected-branch Allow a writable run on main/master.
   --allow-non-git          Allow a workspace that is not a git worktree.
@@ -98,9 +102,11 @@ artifacts_requested=""
 timeout_seconds=1800
 memory=8g
 cpus=4
+guest_codex_version=""
 model=""
 reasoning_effort=""
 posture=outer
+auth_lock_wait_seconds=0
 keep_sandbox=0
 allow_protected_branch=0
 allow_non_git=0
@@ -151,6 +157,10 @@ while (($#)); do
       cpus="${2:?Missing value for --cpus}"
       shift 2
       ;;
+    --guest-codex-version)
+      guest_codex_version="${2:?Missing value for --guest-codex-version}"
+      shift 2
+      ;;
     --model)
       model="${2:?Missing value for --model}"
       shift 2
@@ -161,6 +171,10 @@ while (($#)); do
       ;;
     --posture)
       posture="${2:?Missing value for --posture}"
+      shift 2
+      ;;
+    --auth-lock-wait)
+      auth_lock_wait_seconds="${2:?Missing value for --auth-lock-wait}"
       shift 2
       ;;
     --keep-sandbox)
@@ -192,7 +206,16 @@ done
 [[ -n "$workspace" ]] || die "--workspace is required"
 [[ -n "$prompt_file" ]] || die "--prompt-file is required"
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || die "--timeout must be a positive integer"
+[[ "$auth_lock_wait_seconds" =~ ^(0|[1-9][0-9]*)$ ]] || \
+  die "--auth-lock-wait must be a canonical nonnegative integer"
+if ((${#auth_lock_wait_seconds} > 5)) || ((10#$auth_lock_wait_seconds > 86400)); then
+  die "--auth-lock-wait must not exceed 86400 seconds"
+fi
 [[ "$cpus" =~ ^[1-9][0-9]*$ ]] || die "--cpus must be a positive integer"
+if [[ -n "$guest_codex_version" ]]; then
+  [[ "$guest_codex_version" =~ ^[0-9A-Za-z.+-]+$ ]] || \
+    die "--guest-codex-version contains unsupported characters"
+fi
 case "$posture" in
   outer|workspace-write) ;;
   *) die "--posture must be outer or workspace-write" ;;
@@ -369,9 +392,11 @@ guest_final="$guest_run_dir/final.md"
   printf 'auth_source=%s\n' "$auth_file"
   printf 'auth_destination=%s\n' "$guest_codex_home/auth.json"
   printf 'posture=%s\n' "$posture"
+  printf 'auth_lock_wait_seconds=%s\n' "$auth_lock_wait_seconds"
   printf 'timeout_seconds=%s\n' "$timeout_seconds"
   printf 'memory=%s\n' "$memory"
   printf 'cpus=%s\n' "$cpus"
+  printf 'guest_codex_version=%s\n' "${guest_codex_version:-template-default}"
   printf 'model=%s\n' "${model:-configured-default}"
   printf 'reasoning_effort=%s\n' "${reasoning_effort:-configured-default}"
   printf 'handoff=%s\n' "$handoff_relative"
@@ -402,44 +427,144 @@ host_deadline_reached=0
 result_written=0
 lock_dirs=()
 lock_error=""
+auth_lock_wait_elapsed_seconds=0
+auth_lock_wait_started_at=0
+auth_lock_wait_active=0
 
 lock_key() {
   printf '%s' "$1" | cksum | awk '{print $1}'
 }
 
+lock_has_only_regular_pid() {
+  python3 - "$1" <<'PY'
+import sys
+from pathlib import Path
+
+lock = Path(sys.argv[1])
+try:
+    entries = list(lock.iterdir())
+except OSError:
+    raise SystemExit(1)
+raise SystemExit(0 if len(entries) == 1 and entries[0].name == "pid" and entries[0].is_file() and not entries[0].is_symlink() else 1)
+PY
+}
+
 acquire_lock() {
   local kind="$1"
   local key="$2"
+  local wait_seconds="${3:-0}"
   local lock_root="$temp_root/run-agents-in-sbx-locks"
   local lock_dir="$lock_root/${kind}-$(lock_key "$key").lock"
   local owner=""
+  local deadline=$((SECONDS + wait_seconds))
+  local last_owner=""
+  local last_log_at=-60
+  local remaining=0
+  local started_at=$SECONDS
+  if [[ "$kind" == "auth" ]]; then
+    auth_lock_wait_started_at=$started_at
+    auth_lock_wait_active=1
+  fi
   mkdir -p "$lock_root"
-  if ! mkdir "$lock_dir" 2>/dev/null; then
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    owner=""
     if [[ -f "$lock_dir/pid" ]]; then
       owner="$(sed -n '1p' "$lock_dir/pid" 2>/dev/null || true)"
     fi
     if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
-      lock_error="$kind is already owned by live runner pid=$owner"
-      return 1
+      if ((SECONDS >= deadline)); then
+        auth_lock_wait_active=0
+        if [[ "$kind" == "auth" ]]; then
+          auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+        fi
+        if ((wait_seconds == 0)); then
+          lock_error="$kind is already owned by live runner pid=$owner"
+        else
+          lock_error="timed out after ${wait_seconds}s waiting for $kind owned by live runner pid=$owner"
+        fi
+        return 1
+      fi
+      if [[ "$owner" != "$last_owner" ]] || ((SECONDS - last_log_at >= 60)); then
+        remaining=$((deadline - SECONDS))
+        log "waiting for $kind owner pid=$owner remaining=${remaining}s"
+        printf 'event=wait kind=%s owner_pid=%s elapsed_seconds=%s remaining_seconds=%s\n' \
+          "$kind" "$owner" "$((SECONDS - started_at))" "$remaining" \
+          >> "$artifacts/lock-wait.txt"
+        last_owner="$owner"
+        last_log_at=$SECONDS
+      fi
+      sleep 1
+      owner=""
+      continue
     fi
-    rm -f "$lock_dir/pid" 2>/dev/null || true
-    if ! rmdir "$lock_dir" 2>/dev/null; then
-      lock_error="stale $kind lock needs inspection: $lock_dir"
-      return 1
+    if [[ "$owner" =~ ^[0-9]+$ ]]; then
+      if ! lock_has_only_regular_pid "$lock_dir"; then
+        auth_lock_wait_active=0
+        if [[ "$kind" == "auth" ]]; then
+          auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+        fi
+        lock_error="stale $kind lock metadata needs inspection: $lock_dir"
+        return 1
+      fi
+      rm -f "$lock_dir/pid" 2>/dev/null || true
+      if ! rmdir "$lock_dir" 2>/dev/null; then
+        auth_lock_wait_active=0
+        if [[ "$kind" == "auth" ]]; then
+          auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+        fi
+        lock_error="stale $kind lock needs inspection: $lock_dir"
+        return 1
+      fi
+      owner=""
+      continue
     fi
-    if ! mkdir "$lock_dir"; then
-      lock_error="could not acquire $kind lock"
-      return 1
+    if ((wait_seconds > 0 && SECONDS < deadline)); then
+      if ((SECONDS - last_log_at >= 60)); then
+        remaining=$((deadline - SECONDS))
+        log "waiting for $kind ownership metadata remaining=${remaining}s"
+        printf 'event=wait-metadata kind=%s elapsed_seconds=%s remaining_seconds=%s\n' \
+          "$kind" "$((SECONDS - started_at))" "$remaining" \
+          >> "$artifacts/lock-wait.txt"
+        last_log_at=$SECONDS
+      fi
+      sleep 1
+      owner=""
+      continue
     fi
+    auth_lock_wait_active=0
+    if [[ "$kind" == "auth" ]]; then
+      auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+    fi
+    lock_error="$kind lock ownership metadata needs inspection: $lock_dir"
+    return 1
+  done
+  if ! printf '%s\n' "$$" > "$lock_dir/pid"; then
+    rmdir "$lock_dir" 2>/dev/null || true
+    auth_lock_wait_active=0
+    if [[ "$kind" == "auth" ]]; then
+      auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+    fi
+    lock_error="could not record $kind lock ownership"
+    return 1
   fi
-  printf '%s\n' "$$" > "$lock_dir/pid"
   lock_dirs+=("$lock_dir")
+  auth_lock_wait_active=0
+  if [[ "$kind" == "auth" ]]; then
+    auth_lock_wait_elapsed_seconds=$((SECONDS - started_at))
+  fi
+  printf 'event=acquired kind=%s owner_pid=%s elapsed_seconds=%s\n' \
+    "$kind" "$$" "$((SECONDS - started_at))" >> "$artifacts/lock-wait.txt"
 }
 
 release_locks() {
-  local lock_dir
+  local lock_dir recorded_owner
   if ((${#lock_dirs[@]})); then
     for lock_dir in "${lock_dirs[@]}"; do
+      recorded_owner="$(sed -n '1p' "$lock_dir/pid" 2>/dev/null || true)"
+      if [[ "$recorded_owner" != "$$" ]]; then
+        log "refusing to release lock whose recorded owner changed: $lock_dir"
+        continue
+      fi
       rm -f "$lock_dir/pid" 2>/dev/null || true
       rmdir "$lock_dir" 2>/dev/null || true
     done
@@ -502,6 +627,8 @@ write_result() {
   RESULT_HANDOFF_STATUS="$handoff_status" \
   RESULT_AUTH_CHANGED="$auth_cache_changed" \
   RESULT_AUTH_STATE="$auth_cache_state" \
+  RESULT_AUTH_LOCK_WAIT_LIMIT="$auth_lock_wait_seconds" \
+  RESULT_AUTH_LOCK_WAIT_ELAPSED="$auth_lock_wait_elapsed_seconds" \
   RESULT_DISPOSITION="$cleanup_disposition" \
   RESULT_GUEST_AUTH="$guest_codex_home/auth.json" \
   python3 - <<'PY'
@@ -528,6 +655,8 @@ doc = {
     "handoffStatus": os.environ["RESULT_HANDOFF_STATUS"] or None,
     "guestAuthCacheChanged": boolean("RESULT_AUTH_CHANGED"),
     "guestAuthCacheState": os.environ["RESULT_AUTH_STATE"],
+    "authLockWaitLimitSeconds": int(os.environ["RESULT_AUTH_LOCK_WAIT_LIMIT"]),
+    "authLockWaitElapsedSeconds": int(os.environ["RESULT_AUTH_LOCK_WAIT_ELAPSED"]),
     "sandboxDisposition": os.environ["RESULT_DISPOSITION"],
     "recovery": [],
 }
@@ -622,6 +751,10 @@ finish() {
 }
 
 on_signal() {
+  if (( auth_lock_wait_active == 1 )); then
+    auth_lock_wait_elapsed_seconds=$((SECONDS - auth_lock_wait_started_at))
+    auth_lock_wait_active=0
+  fi
   outcome=cancelled
   preserve_sandbox=1
   if (( auth_provisioned == 1 )); then
@@ -639,6 +772,10 @@ on_signal() {
 on_exit() {
   local status=$?
   set +e
+  if (( auth_lock_wait_active == 1 )); then
+    auth_lock_wait_elapsed_seconds=$((SECONDS - auth_lock_wait_started_at))
+    auth_lock_wait_active=0
+  fi
   if (( result_written == 0 && auth_provisioned == 1 )) && \
     [[ "$auth_cache_state" == "not-checked" ]]; then
     auth_cache_state=unknown
@@ -664,12 +801,12 @@ if ! "$PREFLIGHT" --workspace "$workspace" --auth-file "$auth_file" \
   finish 20
 fi
 
-if ! acquire_lock auth "$auth_file"; then
+if ! acquire_lock auth "$auth_file" "$auth_lock_wait_seconds"; then
   outcome=ownership-busy
   printf '%s\n' "$lock_error" > "$artifacts/lock-error.txt"
   finish 22
 fi
-if ! acquire_lock workspace "$workspace"; then
+if ! acquire_lock workspace "$workspace" 0; then
   outcome=ownership-busy
   printf '%s\n' "$lock_error" > "$artifacts/lock-error.txt"
   finish 22
@@ -725,6 +862,20 @@ if ! sbx policy ls "$sandbox_name" --type network --wide \
   > "$artifacts/network-policy.txt" 2>&1; then
   outcome=policy-unavailable
   finish 22
+fi
+
+if [[ -n "$guest_codex_version" ]]; then
+  if ! sbx exec \
+    --env REQUESTED_CODEX_VERSION="$guest_codex_version" \
+    "$sandbox_name" /bin/sh -lc '
+      set -eu
+      command -v npm
+      npm install -g "@openai/codex@$REQUESTED_CODEX_VERSION"
+      codex --version
+    ' > "$artifacts/guest-codex-setup.txt" 2>&1; then
+    outcome=boundary-unavailable
+    finish 22
+  fi
 fi
 
 if ! sbx exec \

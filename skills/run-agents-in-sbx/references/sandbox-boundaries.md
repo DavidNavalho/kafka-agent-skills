@@ -29,11 +29,12 @@ Use this order:
 4. Confirm the sandbox appears in `sbx ls --json` with the expected agent and exact workspace spelling.
 5. Record guest user, architecture, current directory, Codex version, and hard-timeout availability.
 6. Record `sbx policy ls NAME --type network` before agent execution.
-7. Provision isolated auth and verify `codex login status` reports ChatGPT.
-8. Run a bounded command with stdin closed or fully supplied, capturing stdout and stderr from process start.
-9. Collect the final message, JSONL events, handoff, evidence, exit status, and duration.
-10. Validate the handoff and independently verify the workspace.
-11. Stop on cancellation; after evidence collection, remove the owned sandbox with `sbx rm --force NAME`, or preserve it for a named recovery reason.
+7. If the template Codex CLI cannot support the selected model, install an explicit guest version and record it before credentials cross the boundary.
+8. Provision isolated auth and verify `codex login status` reports ChatGPT.
+9. Run a bounded command with stdin closed or fully supplied, capturing stdout and stderr from process start.
+10. Collect the final message, JSONL events, handoff, evidence, exit status, and duration.
+11. Validate the handoff and independently verify the workspace.
+12. Stop on cancellation; after evidence collection, remove the owned sandbox with `sbx rm --force NAME`, or preserve it for a named recovery reason.
 
 `sbx create` exposes the workspace at the same absolute path in the Linux guest. There is no separate mount step. `sbx exec` starts a stopped sandbox automatically.
 
@@ -64,6 +65,8 @@ codex exec --dangerously-bypass-approvals-and-sandbox ...
 ```
 
 Use the second form only inside an owned and validated outer `sbx`. Before using it after a Codex upgrade, confirm the flag still appears in `codex exec --help` and rerun the boundary matrix below. Never copy the command out of the outer runner.
+
+Do not assume the agent template carries the same Codex CLI as the host. When a selected model requires a newer guest CLI, use the runner's exact `--guest-codex-version` pin. The runner installs it only after recording network policy and before provisioning ChatGPT auth, so package installation never runs beside the copied credential.
 
 ## Mandatory boundary matrix
 
