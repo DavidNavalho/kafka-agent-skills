@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'codex %q\n' "$*" >> "${MOCK_COMMAND_LOG:?}"
+
+case "${1:-}" in
+  --version)
+    printf 'codex-cli 0.mock\n'
+    ;;
+  login)
+    if [[ "${2:-}" == status ]]; then
+      printf 'Logged in using ChatGPT\n'
+    else
+      exit 2
+    fi
+    ;;
+  exec)
+    if [[ "${2:-}" == --help ]]; then
+      printf '%s\n' \
+        'Usage: codex exec' \
+        '  --dangerously-bypass-approvals-and-sandbox' \
+        '  --sandbox' \
+        '  --ephemeral' \
+        '  --ignore-user-config' \
+        '  --json' \
+        '  --output-last-message'
+    else
+      exit 2
+    fi
+    ;;
+  *)
+    exit 2
+    ;;
+esac

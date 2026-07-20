@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Agents in sbx"
+  short_description: "Run isolated Codex agents safely in sbx."
+  default_prompt: "Use $run-agents-in-sbx to run this coding task in an owned sbx sandbox with ChatGPT subscription authentication and a durable handoff."

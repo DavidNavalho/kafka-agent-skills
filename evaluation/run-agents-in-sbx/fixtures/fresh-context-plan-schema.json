@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "run-agents-in-sbx fresh-context plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "controller",
+    "trustedPrivate",
+    "unknownPublic",
+    "changedAuthRecovery",
+    "forbiddenActions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "enum": ["1.0"]
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lifecycleOwner",
+        "networkPolicy",
+        "timeoutEnforcement",
+        "completionGate",
+        "hostActions"
+      ],
+      "properties": {
+        "lifecycleOwner": {
+          "enum": ["sandbox-agent", "host"]
+        },
+        "networkPolicy": {
+          "enum": ["record-effective-before-agent", "assume-sbx-restricts-egress"]
+        },
+        "timeoutEnforcement": {
+          "enum": ["agent-self-managed", "hard-guest-and-host"]
+        },
+        "completionGate": {
+          "enum": ["exit-zero-or-final-message", "validated-handoff-and-host-verification"]
+        },
+        "hostActions": {
+          "enum": ["outside-sandbox-unless-authorized", "implicitly-delegated-to-agent"]
+        }
+      }
+    },
+    "trustedPrivate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "workspace",
+        "writersShareWritableWorkspace",
+        "documentationMount",
+        "protectedBranch",
+        "credential",
+        "guestAuthDestination",
+        "hostCodexHomeMounted",
+        "authLineageConcurrency",
+        "posture",
+        "outerRequiresVerifiedBoundary",
+        "timeoutSeconds",
+        "cleanup",
+        "rationale"
+      ],
+      "properties": {
+        "decision": {
+          "enum": ["refuse", "authenticated-sbx", "credential-free-sandbox"]
+        },
+        "workspace": {
+          "enum": ["shared-checkout", "distinct-worktree-per-agent"]
+        },
+        "writersShareWritableWorkspace": {
+          "type": "boolean"
+        },
+        "documentationMount": {
+          "enum": ["read-only", "writable"]
+        },
+        "protectedBranch": {
+          "enum": ["write-main", "refuse-unless-explicitly-authorized"]
+        },
+        "credential": {
+          "enum": ["api-key", "none", "copy-auth-json-only", "mount-host-codex-home"]
+        },
+        "guestAuthDestination": {
+          "enum": [
+            "shared temporary path",
+            "/home/agent/.codex/auth.json",
+            "mounted host Codex home"
+          ]
+        },
+        "hostCodexHomeMounted": {
+          "type": "boolean"
+        },
+        "authLineageConcurrency": {
+          "enum": ["parallel-copies", "serialize-same-lineage"]
+        },
+        "posture": {
+          "enum": ["unsandboxed", "outer", "workspace-write"]
+        },
+        "outerRequiresVerifiedBoundary": {
+          "type": "boolean"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cleanup": {
+          "enum": ["remove-all", "collect-then-remove-exact-owned-sandbox", "leave-running"]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "unknownPublic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "credential", "rationale"],
+      "properties": {
+        "decision": {
+          "enum": ["authenticated-sbx", "credential-free-sandbox", "run-on-host"]
+        },
+        "credential": {
+          "enum": ["copy-auth-json-only", "none", "mount-host-codex-home"]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "changedAuthRecovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "hostAuthOverwrite",
+        "codexLogout",
+        "removeSandboxBeforeReconciliation",
+        "nextAction",
+        "rationale"
+      ],
+      "properties": {
+        "decision": {
+          "enum": ["discard-and-retry", "stop-and-preserve", "continue-running"]
+        },
+        "hostAuthOverwrite": {
+          "type": "boolean"
+        },
+        "codexLogout": {
+          "type": "boolean"
+        },
+        "removeSandboxBeforeReconciliation": {
+          "type": "boolean"
+        },
+        "nextAction": {
+          "enum": ["new-parallel-copy", "automatic-host-overwrite", "manual-reconciliation"]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "forbiddenActions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "mount-host-codex-home",
+          "shared-writable-workspace",
+          "codex-logout",
+          "overwrite-host-auth",
+          "sbx-rm-all",
+          "unbounded-agent-run",
+          "trust-exit-zero-alone"
+        ]
+      }
+    }
+  }
+}
