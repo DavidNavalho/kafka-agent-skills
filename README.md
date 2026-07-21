@@ -110,23 +110,9 @@ GPT-5.6 evaluated this lifecycle; it did not build the entire repository or make
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A["Host controller"] --> B["Preflight<br/>and ownership locks"]
-    B --> C{"Workspace trust?"}
-    C -->|"Unknown or public code"| U["Credential-free<br/>owned sbx sandbox"]
-    C -->|"Trusted private code"| D["Owned sbx sandbox<br/>identity and network policy recorded"]
-    D --> E["Writable worktree<br/>plus optional read-only context"]
-    E --> F["Copy only auth.json<br/>to guest-private Codex home"]
-    F --> G["Bounded Codex execution<br/>outer or workspace-write"]
-    G --> H["Run-specific handoff<br/>and durable evidence"]
-    H --> I["Host validation<br/>and independent verification"]
-    I --> J{"Safe to clean up?"}
-    J -->|"Verified"| K["Remove exact<br/>owned sandbox"]
-    J -->|"Auth or ownership ambiguity"| L["Stop and preserve<br/>for recovery"]
-```
+[![The sandboxed lifecycle: plan, launch an owned sandbox, isolate each writer, run Codex within limits, validate evidence, and clean up or preserve for recovery.](assets/openai-build-week/sandboxed-lifecycle.png)](assets/openai-build-week/sandboxed-lifecycle.png)
 
-Reusable `sbx` images provide fast startup and persistent development tooling. The skill standardizes the ownership, credential, execution, evidence, and recovery lifecycle around those environments.
+Reusable `sbx` images provide fast startup and persistent development tooling. The skill standardizes the ownership, credential, execution, evidence, and recovery lifecycle around those environments; the [boundary model](skills/run-agents-in-sbx/references/sandbox-boundaries.md) documents the exact trust split and controls.
 
 ## Judge quickstart
 
