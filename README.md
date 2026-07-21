@@ -2,10 +2,13 @@
 
 This repository provides reusable, evaluated agent skills, with an OpenAI Build Week focus on fast and secure Codex execution inside reusable Docker `sbx` environments.
 
+**Judge one-file entry point:** point a local coding agent at [`OPENAI_BUILD_WEEK.md`](OPENAI_BUILD_WEEK.md). It installs the skill, asks before using a ChatGPT/Codex subscription, and runs either the primary authenticated evaluation or the credential-free mock.
+
 Build Week judges can use the [submission guide](#build-week-submission-guide) to jump directly to the product, contribution, evidence, and quickstart.
 
 ## Build Week submission guide
 
+- [Agent setup and evaluation entry point](OPENAI_BUILD_WEEK.md)
 - [Proof at a glance](#proof-at-a-glance)
 - [The problem](#the-problem)
 - [What the project does](#what-the-project-does)
@@ -108,22 +111,26 @@ GPT-5.6 evaluated this lifecycle; it did not build the entire repository or make
 ## Architecture
 
 ```mermaid
-flowchart LR
-    A[Host controller] --> B[Preflight and ownership locks]
-    B --> C[Owned Docker sbx sandbox]
-    C --> D[Writable worktree plus read-only context]
-    D --> E[Copy only auth.json to guest-private Codex home]
-    E --> F[Bounded Codex execution: outer or workspace-write]
-    F --> G[Run-specific handoff and durable evidence]
-    G --> H[Host validation and independent verification]
-    H -->|verified| I[Remove exact owned sandbox]
-    H -->|auth or ownership ambiguity| J[Stop and preserve for recovery]
-    B -->|unknown public code| K[Credential-free sandbox]
+flowchart TD
+    A["Host controller"] --> B["Preflight<br/>and ownership locks"]
+    B --> C{"Workspace trust?"}
+    C -->|"Unknown or public code"| U["Credential-free<br/>owned sbx sandbox"]
+    C -->|"Trusted private code"| D["Owned sbx sandbox<br/>identity and network policy recorded"]
+    D --> E["Writable worktree<br/>plus optional read-only context"]
+    E --> F["Copy only auth.json<br/>to guest-private Codex home"]
+    F --> G["Bounded Codex execution<br/>outer or workspace-write"]
+    G --> H["Run-specific handoff<br/>and durable evidence"]
+    H --> I["Host validation<br/>and independent verification"]
+    I --> J{"Safe to clean up?"}
+    J -->|"Verified"| K["Remove exact<br/>owned sandbox"]
+    J -->|"Auth or ownership ambiguity"| L["Stop and preserve<br/>for recovery"]
 ```
 
 Reusable `sbx` images provide fast startup and persistent development tooling. The skill standardizes the ownership, credential, execution, evidence, and recovery lifecycle around those environments.
 
 ## Judge quickstart
+
+For a guided setup, point a coding agent at [`OPENAI_BUILD_WEEK.md`](OPENAI_BUILD_WEEK.md). It checks prerequisites, requests separate authorization for host installation and subscription use, installs the skill without overwriting an existing copy, and selects the live or mock route with the judge.
 
 The main path runs a real Codex session inside Docker `sbx` using file-backed ChatGPT subscription authentication. It requires a macOS host with Git, Bash, Python 3, Docker `sbx`, Codex CLI, and a ChatGPT login. `sbx` guests are Linux and may use a different architecture from the host; the recorded project evidence does not claim a broader host-platform matrix.
 
