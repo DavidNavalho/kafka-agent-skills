@@ -8,3 +8,5 @@ evaluation/**/evaluation-runs/
 tmp/
 *.log
 
+# Build Week screenshots
+/screenshots
